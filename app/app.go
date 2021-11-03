@@ -31,7 +31,7 @@ func (app *App) Initialize() {
 }
 
 func (app *App) Run() {
-	err := http.ListenAndServe(os.Getenv("APP_PORT"), app.Router)
+	err := http.ListenAndServe(":"+os.Getenv("APP_PORT"), app.Router)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
