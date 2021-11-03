@@ -1,1 +1,1 @@
-# boardhop-go
+# boardhop-api-service-go
