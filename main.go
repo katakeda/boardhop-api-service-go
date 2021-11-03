@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/katakeda/boardhop-api-service/app"
+	"github.com/katakeda/boardhop-api-service-go/app"
 )
 
 func main() {

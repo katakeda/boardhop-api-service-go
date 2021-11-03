@@ -1,4 +1,4 @@
-module github.com/katakeda/boardhop-api-service
+module github.com/katakeda/boardhop-api-service-go
 
 go 1.17
 
