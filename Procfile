@@ -1,1 +1,1 @@
-web: bin/boardhop-api-service
+web: bin/boardhop-api-service-go
