@@ -3,6 +3,7 @@ module github.com/katakeda/boardhop-api-service-go
 go 1.17
 
 require (
+	github.com/Masterminds/squirrel v1.5.2
 	github.com/georgysavva/scany v0.2.9
 	github.com/gin-gonic/gin v1.7.2
 	github.com/jackc/pgx/v4 v4.13.0
@@ -25,6 +26,8 @@ require (
 	github.com/jackc/pgtype v1.8.1 // indirect
 	github.com/jackc/puddle v1.1.3 // indirect
 	github.com/json-iterator/go v1.1.9 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/lib/pq v1.10.3 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect

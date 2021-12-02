@@ -6,12 +6,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
+
+const SURFBOARD_PATH = "root.1"
+const SNOWBOARD_PATH = "root.2"
+const PER_PAGE_MAX = 25
 
 type App struct {
 	router *gin.Engine
@@ -69,41 +76,79 @@ func (app *App) Run() {
 }
 
 func (app *App) getPosts(c *gin.Context) {
-	log.Println("getPosts")
-	sqlStmt := `
-	SELECT
-		a.id,
-		a.user_id,
-		a.title,
-		a.description,
-		a.price,
-		a.rate,
-		a.pickup_latitude,
-		a.pickup_longitude,
-		a.created_at,
-		b.username,
-		b.avatar_url,
-		string_agg(DISTINCT d. "name", ',') AS categories,
-		string_agg(DISTINCT f. "value", ',') AS tags
-	FROM
-		post a
-		JOIN "user" b ON a.user_id = b.id
-		JOIN post_category c ON a.id = c.post_id
-		JOIN category d ON c.category_id = d.id
-		JOIN post_tag e ON a.id = e.post_id
-		JOIN tag f ON e.tag_id = f.id
-		JOIN tag_type g ON f.type_id = g.id
-	WHERE
-		d.path <@ 'root.1'
-	GROUP BY
-		a.id, b.id;
-	`
+	params := c.Request.URL.Query()
+
+	var rootPath string
+	{
+		if params.Get("type") == "snowboard" {
+			rootPath = SNOWBOARD_PATH
+		} else {
+			rootPath = SURFBOARD_PATH
+		}
+	}
+
+	cols := []string{
+		"a.id",
+		"a.user_id",
+		"a.title",
+		"a.price",
+		"a.rate",
+		"a.pickup_latitude",
+		"a.pickup_longitude",
+		"a.created_at",
+		"b.username",
+		"b.avatar_url",
+		`string_agg(DISTINCT d. "name", ',') AS categories`,
+		`string_agg(DISTINCT f. "value", ',') AS tags`,
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	sqlBuilder := psql.Select(cols...).From("post a").
+		Join(`"user" b ON a.user_id = b.id`).
+		Join("post_category c ON a.id = c.post_id").
+		Join("category d ON c.category_id = d.id").
+		Join("post_tag e ON a.id = e.post_id").
+		Join("tag f ON e.tag_id = f.id").
+		Join("tag_type g ON f.type_id = g.id").
+		Where("d.path <@ ?", rootPath)
+
+	if categories := params.Get("cats"); categories != "" {
+		sqlBuilder = sqlBuilder.Where(sq.Eq{"d.name": strings.Split(categories, ",")})
+	}
+
+	if tags := params.Get("tags"); tags != "" {
+		sqlBuilder = sqlBuilder.Where(sq.Eq{"f.value": strings.Split(tags, ",")})
+	}
+
+	offset := 0
+	if page := params.Get("p"); page != "" {
+		var err error
+		offset, err = strconv.Atoi(page)
+		if err != nil {
+			offset = 0
+		}
+	}
+
+	var sqlStmt string
+	var sqlArgs []interface{}
+	{
+		var err error
+		sqlStmt, sqlArgs, err = sqlBuilder.Offset(uint64(offset)*PER_PAGE_MAX).
+			Limit(PER_PAGE_MAX).
+			GroupBy("a.id", "b.id").
+			ToSql()
+		if err != nil {
+			log.Fatalln("Failed to build query:", sqlStmt, err)
+			c.IndentedJSON(http.StatusInternalServerError, "Error")
+		}
+	}
 
 	var posts []*Post
-	err := pgxscan.Select(context.Background(), app.db, &posts, sqlStmt)
+	err := pgxscan.Select(context.Background(), app.db, &posts, sqlStmt, sqlArgs...)
 	if err != nil {
 		log.Fatalln("Failed to execute:", sqlStmt, err)
-		c.IndentedJSON(http.StatusOK, "Error")
+		c.IndentedJSON(http.StatusInternalServerError, "Error")
 	}
 
 	c.IndentedJSON(http.StatusOK, posts)
