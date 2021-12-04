@@ -46,8 +46,8 @@ func (app *App) Initialize() {
 
 	app.router = gin.Default()
 	app.router.GET("/posts", app.getPosts)
-	app.router.GET("/post/:id", app.getPost)
-	app.router.POST("/post", app.createPost)
+	app.router.GET("/posts/:id", app.getPost)
+	app.router.POST("/posts", app.createPost)
 
 	db, err := pgxpool.Connect(context.Background(), fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable",
 		os.Getenv("DB_DRIVER"),
@@ -155,8 +155,52 @@ func (app *App) getPosts(c *gin.Context) {
 }
 
 func (app *App) getPost(c *gin.Context) {
-	log.Println("getPost")
-	c.IndentedJSON(http.StatusOK, c.Param("id"))
+	id := c.Param("id")
+
+	cols := []string{
+		"a.id",
+		"a.user_id",
+		"a.title",
+		"a.description",
+		"a.price",
+		"a.rate",
+		"a.pickup_latitude",
+		"a.pickup_longitude",
+		"a.created_at",
+		"b.username",
+		"b.avatar_url",
+		`string_agg(DISTINCT d. "name", ',') AS categories`,
+		`string_agg(DISTINCT f. "value", ',') AS tags`,
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	sqlStmt, sqlArgs, err := psql.Select(cols...).From("post a").
+		Join(`"user" b ON a.user_id = b.id`).
+		Join("post_category c ON a.id = c.post_id").
+		Join("category d ON c.category_id = d.id").
+		Join("post_tag e ON a.id = e.post_id").
+		Join("tag f ON e.tag_id = f.id").
+		Join("tag_type g ON f.type_id = g.id").
+		Where(sq.Eq{"a.id": id}).
+		GroupBy("a.id", "b.id").
+		ToSql()
+	if err != nil {
+		log.Fatalln("Failed to build query:", sqlStmt, err)
+		c.IndentedJSON(http.StatusInternalServerError, "Error")
+	}
+
+	var post Post
+	{
+		err := pgxscan.Get(context.Background(), app.db, &post, sqlStmt, sqlArgs...)
+		if err != nil {
+			log.Println("Failed to execute:", sqlStmt, err)
+			c.IndentedJSON(http.StatusNotFound, nil)
+			return
+		}
+	}
+
+	c.IndentedJSON(http.StatusOK, post)
 }
 
 func (app *App) createPost(c *gin.Context) {
