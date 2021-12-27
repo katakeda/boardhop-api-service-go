@@ -151,6 +151,11 @@ func (app *App) getPosts(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, "Error")
 	}
 
+	if len(posts) <= 0 {
+		log.Println("No posts found")
+		c.IndentedJSON(http.StatusNotFound, "No posts found")
+	}
+
 	c.IndentedJSON(http.StatusOK, posts)
 }
 
