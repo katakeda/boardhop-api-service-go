@@ -16,9 +16,11 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-const SURFBOARD_PATH = "root.1"
-const SNOWBOARD_PATH = "root.2"
-const PER_PAGE_MAX = 25
+const (
+	SURFBOARD_PATH = "root.1"
+	SNOWBOARD_PATH = "root.2"
+	PER_PAGE_MAX   = 25
+)
 
 type App struct {
 	router *gin.Engine
@@ -26,19 +28,26 @@ type App struct {
 }
 
 type Post struct {
-	Id              int       `json:"id"`
-	UserId          int       `json:"userId"`
-	Title           string    `json:"title"`
-	Description     string    `json:"description"`
-	Price           float32   `json:"price"`
-	Rate            string    `json:"rate"`
-	PickupLatitude  float64   `json:"pickupLatitude"`
-	PickupLongitude float64   `json:"pickupLongitude"`
-	CreatedAt       time.Time `json:"createdAt"`
-	Username        string    `json:"username"`
-	AvatarUrl       string    `json:"avatarUrl"`
-	Categories      string    `json:"categories"`
-	Tags            string    `json:"tags"`
+	Id              *int       `json:"id"`
+	UserId          *int       `json:"userId"`
+	Title           *string    `json:"title"`
+	Description     *string    `json:"description"`
+	Price           *float32   `json:"price"`
+	Rate            *string    `json:"rate"`
+	PickupLatitude  *float64   `json:"pickupLatitude"`
+	PickupLongitude *float64   `json:"pickupLongitude"`
+	CreatedAt       *time.Time `json:"createdAt"`
+	Username        *string    `json:"username"`
+	AvatarUrl       *string    `json:"avatarUrl"`
+	Categories      *string    `json:"categories"`
+	Tags            *string    `json:"tags"`
+}
+
+type Category struct {
+	Id       *int    `json:"id"`
+	ParentId *int    `json:"parentId"`
+	Name     *string `json:"name"`
+	Path     *string `json:"path"`
 }
 
 func (app *App) Initialize() {
@@ -48,6 +57,7 @@ func (app *App) Initialize() {
 	app.router.GET("/posts", app.getPosts)
 	app.router.GET("/posts/:id", app.getPost)
 	app.router.POST("/posts", app.createPost)
+	app.router.GET("/categories", app.getCategories)
 
 	db, err := pgxpool.Connect(context.Background(), fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable",
 		os.Getenv("DB_DRIVER"),
@@ -108,9 +118,9 @@ func (app *App) getPosts(c *gin.Context) {
 		Join(`"user" b ON a.user_id = b.id`).
 		Join("post_category c ON a.id = c.post_id").
 		Join("category d ON c.category_id = d.id").
-		Join("post_tag e ON a.id = e.post_id").
-		Join("tag f ON e.tag_id = f.id").
-		Join("tag_type g ON f.type_id = g.id").
+		LeftJoin("post_tag e ON a.id = e.post_id").
+		LeftJoin("tag f ON e.tag_id = f.id").
+		LeftJoin("tag_type g ON f.type_id = g.id").
 		Where("d.path <@ ?", rootPath)
 
 	if categories := params.Get("cats"); categories != "" {
@@ -144,7 +154,7 @@ func (app *App) getPosts(c *gin.Context) {
 		}
 	}
 
-	var posts []*Post
+	var posts []Post
 	err := pgxscan.Select(context.Background(), app.db, &posts, sqlStmt, sqlArgs...)
 	if err != nil {
 		log.Fatalln("Failed to execute:", sqlStmt, err)
@@ -180,7 +190,8 @@ func (app *App) getPost(c *gin.Context) {
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
-	sqlStmt, sqlArgs, err := psql.Select(cols...).From("post a").
+	sqlStmt, sqlArgs, err := psql.Select(cols...).
+		From("post a").
 		Join(`"user" b ON a.user_id = b.id`).
 		Join("post_category c ON a.id = c.post_id").
 		Join("category d ON c.category_id = d.id").
@@ -211,4 +222,38 @@ func (app *App) getPost(c *gin.Context) {
 func (app *App) createPost(c *gin.Context) {
 	log.Println("createPost")
 	c.IndentedJSON(http.StatusOK, "OK")
+}
+
+func (app *App) getCategories(c *gin.Context) {
+	cols := []string{
+		"id",
+		"parent_id",
+		"name",
+		"path",
+	}
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sqlStmt, sqlArgs, err := psql.Select(cols...).
+		From("category").
+		ToSql()
+	if err != nil {
+		log.Fatalln("Failed to build query:", sqlStmt, err)
+		c.IndentedJSON(http.StatusInternalServerError, "Error")
+	}
+
+	var categories []Category
+	{
+		err := pgxscan.Select(context.Background(), app.db, &categories, sqlStmt, sqlArgs...)
+		if err != nil {
+			log.Println("Failed to execute:", sqlStmt, err)
+			c.IndentedJSON(http.StatusInternalServerError, "Something went wrong")
+			return
+		}
+	}
+
+	if len(categories) <= 0 {
+		log.Println("No categories found")
+		c.IndentedJSON(http.StatusNotFound, "No categories found")
+	}
+
+	c.IndentedJSON(http.StatusOK, categories)
 }
