@@ -13,15 +13,15 @@ func (s *Service) GetPosts(c *gin.Context) {
 	posts, err := s.repo.GetPosts(c, params)
 	if err != nil {
 		log.Println("Failed to get posts", err)
-		c.IndentedJSON(http.StatusInternalServerError, "Something went wrong while getting posts")
+		c.JSON(http.StatusInternalServerError, "Something went wrong while getting posts")
 	}
 
 	if len(posts) <= 0 {
 		log.Println("No posts found")
-		c.IndentedJSON(http.StatusNotFound, "No posts found")
+		c.JSON(http.StatusNotFound, "No posts found")
 	}
 
-	c.IndentedJSON(http.StatusOK, posts)
+	c.JSON(http.StatusOK, posts)
 }
 
 func (s *Service) GetPost(c *gin.Context) {
@@ -30,27 +30,27 @@ func (s *Service) GetPost(c *gin.Context) {
 	post, err := s.repo.GetPost(c, id)
 	if err != nil {
 		log.Println("Failed to get post", err)
-		c.IndentedJSON(http.StatusInternalServerError, "Something went wrong while getting post")
+		c.JSON(http.StatusInternalServerError, "Something went wrong while getting post")
 	}
 
-	c.IndentedJSON(http.StatusOK, post)
+	c.JSON(http.StatusOK, post)
 }
 
 func (s *Service) CreatePost(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, "OK")
+	c.JSON(http.StatusOK, "OK")
 }
 
 func (s *Service) GetCategories(c *gin.Context) {
 	categories, err := s.repo.GetCategories()
 	if err != nil {
 		log.Println("Failed to get categories", err)
-		c.IndentedJSON(http.StatusInternalServerError, "Something went wrong while getting categories")
+		c.JSON(http.StatusInternalServerError, "Something went wrong while getting categories")
 	}
 
 	if len(categories) <= 0 {
 		log.Println("No categories found")
-		c.IndentedJSON(http.StatusNotFound, "No categories found")
+		c.JSON(http.StatusNotFound, "No categories found")
 	}
 
-	c.IndentedJSON(http.StatusOK, categories)
+	c.JSON(http.StatusOK, categories)
 }
