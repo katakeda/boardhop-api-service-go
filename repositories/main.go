@@ -2,9 +2,17 @@ package repositories
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
+
+type IRepository interface {
+	GetPosts(ctx context.Context, params url.Values) ([]Post, error)
+	GetPost(ctx context.Context, id string) (*Post, error)
+
+	GetCategories() ([]Category, error)
+}
 
 type Repository struct {
 	db *pgxpool.Pool
