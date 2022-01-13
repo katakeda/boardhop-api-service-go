@@ -19,21 +19,21 @@ const (
 )
 
 type Post struct {
-	Id              int        `db:"id"`
-	UserId          int        `db:"user_id"`
-	Title           string     `db:"title"`
-	Price           float32    `db:"price"`
-	Rate            string     `db:"rate"`
-	Description     *string    `db:"description"`
-	PickupLatitude  *float64   `db:"pickup_latitude"`
-	PickupLongitude *float64   `db:"pickup_longitude"`
-	CreatedAt       *time.Time `db:"created_at"`
+	Id              int        `json:"id" db:"id"`
+	UserId          int        `json:"userId" db:"user_id"`
+	Title           string     `json:"title" db:"title"`
+	Price           float32    `json:"price" db:"price"`
+	Rate            string     `json:"rate" db:"rate"`
+	Description     *string    `json:"description" db:"description"`
+	PickupLatitude  *float64   `json:"pickupLatitude" db:"pickup_latitude"`
+	PickupLongitude *float64   `json:"pickupLongitude" db:"pickup_longitude"`
+	CreatedAt       *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt       *time.Time `db:"deleted_at"`
 
-	Username   *string `db:"username"`
-	AvatarUrl  *string `db:"avatar_url"`
-	Categories *string `db:"categories"`
-	Tags       *string `db:"tags"`
+	Username   *string `json:"username" db:"username"`
+	AvatarUrl  *string `json:"avatarUrl" db:"avatar_url"`
+	Categories *string `json:"categories" db:"categories"`
+	Tags       *string `json:"tags" db:"tags"`
 }
 
 // TODO: Replace params with filters
