@@ -7,10 +7,10 @@ import (
 )
 
 type Service struct {
-	repo *repositories.Repository
+	repo repositories.IRepository
 }
 
-func NewService(repo *repositories.Repository) (*Service, error) {
+func NewService(repo repositories.IRepository) (*Service, error) {
 	if repo == nil {
 		return nil, fmt.Errorf("repository is required to start a new service")
 	}
