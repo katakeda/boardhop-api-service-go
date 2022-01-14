@@ -36,6 +36,16 @@ type Post struct {
 	Tags       *string `json:"tags" db:"tags"`
 }
 
+type CreatePostPayload struct {
+	UserId          int      `json:"userId"`
+	Title           string   `json:"title"`
+	Price           float32  `json:"price"`
+	Rate            string   `json:"rate"`
+	Description     *string  `json:"description"`
+	PickupLatitude  *float64 `json:"pickupLatitude"`
+	PickupLongitude *float64 `json:"pickupLongitude"`
+}
+
 // TODO: Replace params with filters
 func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, error) {
 	var rootPath string
@@ -146,7 +156,49 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 
 	var post Post
 	{
-		err := pgxscan.Get(context.Background(), r.db, &post, sqlStmt, sqlArgs...)
+		err := pgxscan.Get(ctx, r.db, &post, sqlStmt, sqlArgs...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
+		}
+	}
+
+	return &post, nil
+}
+
+func (r *Repository) CreatePost(ctx context.Context, payload CreatePostPayload) (*Post, error) {
+	cols := []string{
+		"user_id",
+		"title",
+		"price",
+		"rate",
+		"pickup_latitude",
+		"pickup_longitude",
+	}
+
+	vals := []interface{}{
+		payload.UserId,
+		payload.Title,
+		payload.Price,
+		payload.Rate,
+		payload.PickupLatitude,
+		payload.PickupLongitude,
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	sqlStmt, sqlArgs, err := psql.Insert("post").
+		Columns(cols...).
+		Values(vals...).
+		Suffix("RETURNING *").
+		ToSql()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s %w", sqlStmt, err)
+	}
+
+	var post Post
+	{
+		err := pgxscan.Get(ctx, r.db, &post, sqlStmt, sqlArgs...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
 		}

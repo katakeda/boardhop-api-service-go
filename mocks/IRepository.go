@@ -16,6 +16,29 @@ type IRepository struct {
 	mock.Mock
 }
 
+// CreatePost provides a mock function with given fields: ctx, payload
+func (_m *IRepository) CreatePost(ctx context.Context, payload repositories.CreatePostPayload) (*repositories.Post, error) {
+	ret := _m.Called(ctx, payload)
+
+	var r0 *repositories.Post
+	if rf, ok := ret.Get(0).(func(context.Context, repositories.CreatePostPayload) *repositories.Post); ok {
+		r0 = rf(ctx, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.Post)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, repositories.CreatePostPayload) error); ok {
+		r1 = rf(ctx, payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetCategories provides a mock function with given fields:
 func (_m *IRepository) GetCategories() ([]repositories.Category, error) {
 	ret := _m.Called()

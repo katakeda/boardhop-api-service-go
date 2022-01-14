@@ -10,6 +10,7 @@ import (
 type IRepository interface {
 	GetPosts(ctx context.Context, params url.Values) ([]Post, error)
 	GetPost(ctx context.Context, id string) (*Post, error)
+	CreatePost(ctx context.Context, payload CreatePostPayload) (*Post, error)
 
 	GetCategories() ([]Category, error)
 }

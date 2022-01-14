@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/katakeda/boardhop-api-service-go/repositories"
 )
 
 func (s *Service) GetPosts(c *gin.Context) {
@@ -37,7 +38,19 @@ func (s *Service) GetPost(c *gin.Context) {
 }
 
 func (s *Service) CreatePost(c *gin.Context) {
-	c.JSON(http.StatusOK, "OK")
+	payload := repositories.CreatePostPayload{}
+	if err := c.BindJSON(&payload); err != nil {
+		log.Println("Failed to parse payload", err)
+		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+	}
+
+	post, err := s.repo.CreatePost(c, payload)
+	if err != nil {
+		log.Println("Failed to create post", err)
+		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+	}
+
+	c.JSON(http.StatusOK, post)
 }
 
 func (s *Service) GetCategories(c *gin.Context) {
