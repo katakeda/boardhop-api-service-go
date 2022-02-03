@@ -19,8 +19,8 @@ const (
 )
 
 type Post struct {
-	Id              int        `json:"id" db:"id"`
-	UserId          int        `json:"userId" db:"user_id"`
+	Id              string     `json:"id" db:"id"`
+	UserId          string     `json:"userId" db:"user_id"`
 	Title           string     `json:"title" db:"title"`
 	Price           float32    `json:"price" db:"price"`
 	Rate            string     `json:"rate" db:"rate"`
@@ -37,7 +37,7 @@ type Post struct {
 }
 
 type CreatePostPayload struct {
-	UserId          int      `json:"userId"`
+	UserId          string   `json:"userId"`
 	Title           string   `json:"title"`
 	Price           float32  `json:"price"`
 	Rate            string   `json:"rate"`
