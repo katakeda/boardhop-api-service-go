@@ -30,7 +30,7 @@ type Post struct {
 	CreatedAt       *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt       *time.Time `db:"deleted_at"`
 
-	Username   *string `json:"username" db:"username"`
+	Email      *string `json:"email" db:"email"`
 	AvatarUrl  *string `json:"avatarUrl" db:"avatar_url"`
 	Categories *string `json:"categories" db:"categories"`
 	Tags       *string `json:"tags" db:"tags"`
@@ -64,7 +64,7 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		"a.pickup_latitude",
 		"a.pickup_longitude",
 		"a.created_at",
-		"b.username",
+		"b.email",
 		"b.avatar_url",
 		`string_agg(DISTINCT d. "name", ',') AS categories`,
 		`string_agg(DISTINCT f. "value", ',') AS tags`,
@@ -131,7 +131,7 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		"a.pickup_latitude",
 		"a.pickup_longitude",
 		"a.created_at",
-		"b.username",
+		"b.email",
 		"b.avatar_url",
 		`string_agg(DISTINCT d. "name", ',') AS categories`,
 		`string_agg(DISTINCT f. "value", ',') AS tags`,
