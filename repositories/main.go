@@ -13,6 +13,8 @@ type IRepository interface {
 	CreatePost(ctx context.Context, payload CreatePostPayload) (*Post, error)
 
 	GetCategories() ([]Category, error)
+
+	UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error)
 }
 
 type Repository struct {

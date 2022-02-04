@@ -45,6 +45,8 @@ func (app *App) Initialize() {
 	app.router.GET("/categories", svc.GetCategories)
 
 	app.router.POST("/posts", svc.CreatePost)
+
+	app.router.POST("/user/signup", svc.UserSignup)
 }
 
 func (app *App) Run() {
