@@ -43,6 +43,7 @@ func (app *App) Initialize() {
 	app.router.GET("/posts", svc.GetPosts)
 	app.router.GET("/posts/:id", svc.GetPost)
 	app.router.GET("/categories", svc.GetCategories)
+	app.router.GET("/user", AuthRequired(), svc.GetUser)
 
 	app.router.POST("/posts", svc.CreatePost)
 

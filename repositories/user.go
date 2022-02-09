@@ -62,3 +62,33 @@ func (r *Repository) UserSignup(ctx context.Context, payload UserSignupPayload) 
 
 	return &user, nil
 }
+
+func (r *Repository) GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error) {
+	cols := []string{
+		"email",
+		"first_name",
+		"last_name",
+		"google_auth_id",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	sqlStmt, sqlArgs, err := psql.Select(cols...).
+		From(`"user"`).
+		Where(sq.Eq{"google_auth_id": googleAuthId}).
+		ToSql()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s %w", sqlStmt, err)
+	}
+
+	var user User
+	{
+		err := pgxscan.Get(ctx, r.db, &user, sqlStmt, sqlArgs...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
+		}
+	}
+
+	return &user, nil
+}

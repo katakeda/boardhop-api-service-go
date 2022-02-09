@@ -15,6 +15,7 @@ type IRepository interface {
 	GetCategories() ([]Category, error)
 
 	UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error)
+	GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error)
 }
 
 type Repository struct {

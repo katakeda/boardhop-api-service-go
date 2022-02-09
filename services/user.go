@@ -25,3 +25,20 @@ func (s *Service) UserSignup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+func (s *Service) GetUser(c *gin.Context) {
+	googleAuthId, ok := c.Get("googleAuthId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, "Failed to authorize user")
+		return
+	}
+
+	user, err := s.repo.GetUserByGoogleAuthId(c, googleAuthId)
+	if err != nil {
+		log.Println("Failed to get user", err)
+		c.JSON(http.StatusNotFound, "Failed to get user")
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
