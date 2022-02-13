@@ -48,6 +48,7 @@ func (app *App) Initialize() {
 	app.router.POST("/posts", svc.CreatePost)
 
 	app.router.POST("/user/signup", svc.UserSignup)
+	app.router.POST("/user/login", svc.UserLogin)
 }
 
 func (app *App) Run() {

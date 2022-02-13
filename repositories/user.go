@@ -25,8 +25,14 @@ type UserSignupPayload struct {
 	GoogleAuthId string `json:"googleAuthId"`
 }
 
+type UserLoginPayload struct {
+	Email        string `json:"email"`
+	GoogleAuthId string `json:"googleAuthId"`
+}
+
 func (r *Repository) UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error) {
 	cols := []string{
+		"id",
 		"email",
 		"first_name",
 		"last_name",
@@ -65,6 +71,7 @@ func (r *Repository) UserSignup(ctx context.Context, payload UserSignupPayload) 
 
 func (r *Repository) GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error) {
 	cols := []string{
+		"id",
 		"email",
 		"first_name",
 		"last_name",

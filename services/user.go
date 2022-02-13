@@ -26,6 +26,24 @@ func (s *Service) UserSignup(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func (s *Service) UserLogin(c *gin.Context) {
+	payload := repositories.UserLoginPayload{}
+	if err := c.BindJSON(&payload); err != nil {
+		log.Println("Failed to parse payload", err)
+		c.JSON(http.StatusInternalServerError, "Something went wrong during login")
+		return
+	}
+
+	user, err := s.repo.GetUserByGoogleAuthId(c, payload.GoogleAuthId)
+	if err != nil {
+		log.Println("Failed to get user", err)
+		c.JSON(http.StatusNotFound, "Failed to get user")
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
 func (s *Service) GetUser(c *gin.Context) {
 	googleAuthId, ok := c.Get("googleAuthId")
 	if !ok {
