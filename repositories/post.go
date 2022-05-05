@@ -107,14 +107,14 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 			GroupBy("a.id", "b.id").
 			ToSql()
 		if err != nil {
-			return nil, fmt.Errorf("failed to build query: %s %w", sqlStmt, err)
+			return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
 		}
 	}
 
 	var posts []Post
 	err := pgxscan.Select(ctx, r.db, &posts, sqlStmt, sqlArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
 	}
 
 	return posts, nil
@@ -151,14 +151,14 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		GroupBy("a.id", "b.id").
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build query: %s %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
 	}
 
 	var post Post
 	{
 		err := pgxscan.Get(ctx, r.db, &post, sqlStmt, sqlArgs...)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
+			return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
 		}
 	}
 
@@ -171,6 +171,7 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePostPayload) 
 		"title",
 		"price",
 		"rate",
+		"description",
 		"pickup_latitude",
 		"pickup_longitude",
 	}
@@ -180,6 +181,7 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePostPayload) 
 		payload.Title,
 		payload.Price,
 		payload.Rate,
+		payload.Description,
 		payload.PickupLatitude,
 		payload.PickupLongitude,
 	}
@@ -193,14 +195,14 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePostPayload) 
 		ToSql()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to build query: %s %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
 	}
 
 	var post Post
 	{
 		err := pgxscan.Get(ctx, r.db, &post, sqlStmt, sqlArgs...)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
+			return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
 		}
 	}
 

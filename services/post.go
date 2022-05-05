@@ -32,7 +32,7 @@ func (s *Service) GetPost(c *gin.Context) {
 
 	post, err := s.repo.GetPost(c, id)
 	if err != nil {
-		log.Println("Failed to get post", err)
+		log.Printf("Failed to get post | %v", err)
 		c.JSON(http.StatusInternalServerError, "Something went wrong while getting post")
 		return
 	}
