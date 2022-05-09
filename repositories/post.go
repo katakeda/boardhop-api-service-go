@@ -10,6 +10,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 )
 
 const (
@@ -36,7 +37,16 @@ type Post struct {
 	Tags       *string `json:"tags" db:"tags"`
 }
 
-type CreatePostPayload struct {
+type PostMedia struct {
+	Id        string     `json:"id" db:"id"`
+	PostId    string     `json:"postId" db:"post_id"`
+	MediaUrl  string     `json:"mediaUrl" db:"media_url"`
+	Type      string     `json:"type" db:"type"`
+	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
+	DeletedAt *time.Time `db:"deleted_at"`
+}
+
+type CreatePost struct {
 	UserId          string   `json:"userId"`
 	Title           string   `json:"title"`
 	Price           float32  `json:"price"`
@@ -44,6 +54,12 @@ type CreatePostPayload struct {
 	Description     *string  `json:"description"`
 	PickupLatitude  *float64 `json:"pickupLatitude"`
 	PickupLongitude *float64 `json:"pickupLongitude"`
+}
+
+type CreatePostMedia struct {
+	PostId   string
+	MediaUrl string
+	Type     string
 }
 
 // TODO: Replace params with filters
@@ -165,7 +181,18 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 	return &post, nil
 }
 
-func (r *Repository) CreatePost(ctx context.Context, payload CreatePostPayload) (*Post, error) {
+func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *Post, err error) {
+	tx := ctx.Value(TxnKey).(pgx.Tx)
+	if tx == nil {
+		tx, _ := r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
 	cols := []string{
 		"user_id",
 		"title",
@@ -191,20 +218,57 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePostPayload) 
 	sqlStmt, sqlArgs, err := psql.Insert("post").
 		Columns(cols...).
 		Values(vals...).
-		Suffix("RETURNING *").
+		Suffix("RETURNING id").
 		ToSql()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
 	}
 
-	var post Post
-	{
-		err := pgxscan.Get(ctx, r.db, &post, sqlStmt, sqlArgs...)
-		if err != nil {
-			return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
-		}
+	var newPost Post
+	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(&newPost.Id); err != nil {
+		return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
 	}
 
-	return &post, nil
+	return &newPost, nil
+}
+
+func (r *Repository) CreatePostMedias(ctx context.Context, medias []CreatePostMedia) (err error) {
+	tx := ctx.Value(TxnKey).(pgx.Tx)
+	if tx == nil {
+		tx, _ := r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	cols := []string{
+		"post_id",
+		"media_url",
+		"type",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Insert("post_media").
+		Columns(cols...)
+	for idx := range medias {
+		psql = psql.Values(
+			medias[idx].PostId,
+			medias[idx].MediaUrl,
+			medias[idx].Type,
+		)
+	}
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s with %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s with %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
 }

@@ -1,12 +1,20 @@
 package services
 
 import (
+	"fmt"
 	"log"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/katakeda/boardhop-api-service-go/repositories"
+	"github.com/katakeda/boardhop-api-service-go/utils"
 )
+
+type CreatePostPayload struct {
+	Data   repositories.CreatePost `json:"data" form:"data" binding:"required"`
+	Images []*multipart.FileHeader `json:"images" form:"images"`
+}
 
 func (s *Service) GetPosts(c *gin.Context) {
 	params := c.Request.URL.Query()
@@ -41,19 +49,62 @@ func (s *Service) GetPost(c *gin.Context) {
 }
 
 func (s *Service) CreatePost(c *gin.Context) {
-	payload := repositories.CreatePostPayload{}
-	if err := c.BindJSON(&payload); err != nil {
-		log.Println("Failed to parse payload", err)
+	payload := CreatePostPayload{}
+	if err := c.ShouldBind(&payload); err != nil {
+		log.Println("Failed to parse payload |", err)
 		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
 		return
 	}
 
-	post, err := s.repo.CreatePost(c, payload)
+	ctx, err := s.repo.BeginTxn(c)
 	if err != nil {
-		log.Println("Failed to create post", err)
+		log.Println("Failed to begin db txn |", err)
 		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
 		return
 	}
+
+	post, err := s.repo.CreatePost(ctx, payload.Data)
+	if err != nil {
+		log.Println("Failed to create post |", err)
+		s.repo.RollbackTxn(ctx)
+		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+		return
+	}
+
+	images := []repositories.CreatePostMedia{}
+	for idx := range payload.Images {
+		images = append(images, repositories.CreatePostMedia{
+			PostId:   post.Id,
+			MediaUrl: fmt.Sprintf("%s_%d.jpg", post.Id, idx),
+			Type:     "image",
+		})
+	}
+
+	if err := s.repo.CreatePostMedias(ctx, images); err != nil {
+		log.Println("Failed to create post medias |", err)
+		s.repo.RollbackTxn(ctx)
+		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+		return
+	}
+
+	bucket, err := utils.GetDefaultBucket(c)
+	if err != nil {
+		log.Println("Failed to get default bucket |", err)
+		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+		return
+	}
+
+	for idx := range payload.Images {
+		if err := utils.UploadFile(c, bucket, images[idx].MediaUrl, payload.Images[idx]); err != nil {
+			// Revert all uploaded
+			log.Println("Failed to upload files |", err)
+			s.repo.RollbackTxn(ctx)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+			return
+		}
+	}
+
+	s.repo.CommitTxn(ctx)
 
 	c.JSON(http.StatusOK, post)
 }

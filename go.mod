@@ -3,10 +3,12 @@ module github.com/katakeda/boardhop-api-service-go
 go 1.17
 
 require (
+	cloud.google.com/go/storage v1.10.0
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/Masterminds/squirrel v1.5.2
 	github.com/georgysavva/scany v0.2.9
 	github.com/gin-gonic/gin v1.7.2
+	github.com/google/uuid v1.1.2
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/joho/godotenv v1.4.0
 	github.com/stretchr/testify v1.7.0
@@ -15,7 +17,6 @@ require (
 require (
 	cloud.google.com/go v0.75.0 // indirect
 	cloud.google.com/go/firestore v1.5.0 // indirect
-	cloud.google.com/go/storage v1.10.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
