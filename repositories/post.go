@@ -221,12 +221,12 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *
 		Suffix("RETURNING id").
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to build query: %s args %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	var newPost Post
 	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(&newPost.Id); err != nil {
-		return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to execute: %s args %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	return &newPost, nil
@@ -263,11 +263,11 @@ func (r *Repository) CreatePostMedias(ctx context.Context, medias []CreatePostMe
 
 	sqlStmt, sqlArgs, err := psql.ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build query: %s with %v | %w", sqlStmt, sqlArgs, err)
+		return fmt.Errorf("failed to build query: %s args %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
-		return fmt.Errorf("failed to execute query: %s with %v | %w", sqlStmt, sqlArgs, err)
+		return fmt.Errorf("failed to execute query: %s args %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	return nil

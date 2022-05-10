@@ -49,64 +49,7 @@ func (s *Service) GetPost(c *gin.Context) {
 }
 
 func (s *Service) CreatePost(c *gin.Context) {
-	payload := CreatePostPayload{}
-	if err := c.ShouldBind(&payload); err != nil {
-		log.Println("Failed to parse payload |", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
-		return
-	}
-
-	ctx, err := s.repo.BeginTxn(c)
-	if err != nil {
-		log.Println("Failed to begin db txn |", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
-		return
-	}
-
-	post, err := s.repo.CreatePost(ctx, payload.Data)
-	if err != nil {
-		log.Println("Failed to create post |", err)
-		s.repo.RollbackTxn(ctx)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
-		return
-	}
-
-	images := []repositories.CreatePostMedia{}
-	for idx := range payload.Images {
-		images = append(images, repositories.CreatePostMedia{
-			PostId:   post.Id,
-			MediaUrl: fmt.Sprintf("%s_%d.jpg", post.Id, idx),
-			Type:     "image",
-		})
-	}
-
-	if err := s.repo.CreatePostMedias(ctx, images); err != nil {
-		log.Println("Failed to create post medias |", err)
-		s.repo.RollbackTxn(ctx)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
-		return
-	}
-
-	bucket, err := utils.GetDefaultBucket(c)
-	if err != nil {
-		log.Println("Failed to get default bucket |", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
-		return
-	}
-
-	for idx := range payload.Images {
-		if err := utils.UploadFile(c, bucket, images[idx].MediaUrl, payload.Images[idx]); err != nil {
-			// Revert all uploaded
-			log.Println("Failed to upload files |", err)
-			s.repo.RollbackTxn(ctx)
-			c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
-			return
-		}
-	}
-
-	s.repo.CommitTxn(ctx)
-
-	c.JSON(http.StatusOK, post)
+	s.createPost(c)
 }
 
 func (s *Service) GetCategories(c *gin.Context) {
@@ -124,4 +67,71 @@ func (s *Service) GetCategories(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, categories)
+}
+
+func (s *Service) createPost(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to create post |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while creating post")
+		}
+	}()
+
+	payload := CreatePostPayload{}
+	if err = c.ShouldBind(&payload); err != nil {
+		return fmt.Errorf("failed to parse payload | %w", err)
+	}
+
+	ctx, err := s.repo.BeginTxn(c)
+	if err != nil {
+		return fmt.Errorf("failed to begin db txn | %w", err)
+	}
+
+	post, err := s.repo.CreatePost(ctx, payload.Data)
+	if err != nil {
+		s.repo.RollbackTxn(ctx)
+		return fmt.Errorf("failed to insert post | %w", err)
+	}
+
+	images := []repositories.CreatePostMedia{}
+	for idx := range payload.Images {
+		images = append(images, repositories.CreatePostMedia{
+			PostId:   post.Id,
+			MediaUrl: fmt.Sprintf("%s_%d.jpg", post.Id, idx),
+			Type:     "image",
+		})
+	}
+
+	if len(images) > 0 {
+		if err = s.repo.CreatePostMedias(ctx, images); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to create post medias | %w", err)
+		}
+
+		bucket, err := utils.GetDefaultBucket(c)
+		if err != nil {
+			return fmt.Errorf("failed to get default bucket | %w", err)
+		}
+
+		var uploadErr error
+		defer func() {
+			if uploadErr != nil {
+				for idx := range images {
+					utils.DeleteFile(c, bucket, images[idx].MediaUrl)
+				}
+			}
+		}()
+
+		for idx := range payload.Images {
+			if err := utils.UploadFile(c, bucket, images[idx].MediaUrl, payload.Images[idx]); err != nil {
+				uploadErr = err
+				s.repo.RollbackTxn(ctx)
+				return fmt.Errorf("failed to upload files | %w", err)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, post)
+
+	return s.repo.CommitTxn(ctx)
 }
