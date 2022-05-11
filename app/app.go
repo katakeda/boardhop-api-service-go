@@ -42,6 +42,7 @@ func (app *App) Initialize() {
 	app.router = gin.Default()
 	app.router.GET("/posts", svc.GetPosts)
 	app.router.GET("/posts/:id", svc.GetPost)
+	app.router.GET("/tags", svc.GetTags)
 	app.router.GET("/categories", svc.GetCategories)
 	app.router.GET("/user", AuthRequired(), svc.GetUser)
 

@@ -56,10 +56,20 @@ type CreatePost struct {
 	PickupLongitude *float64 `json:"pickupLongitude"`
 }
 
+type CreatePostTag struct {
+	PostId string
+	TagId  string
+}
+
 type CreatePostMedia struct {
 	PostId   string
 	MediaUrl string
 	Type     string
+}
+
+type CreatePostCategory struct {
+	PostId     string
+	CategoryId string
 }
 
 // TODO: Replace params with filters
@@ -184,7 +194,7 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *Post, err error) {
 	tx := ctx.Value(TxnKey).(pgx.Tx)
 	if tx == nil {
-		tx, _ := r.db.Begin(ctx)
+		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
 				return tx.Rollback(ctx)
@@ -221,21 +231,60 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *
 		Suffix("RETURNING id").
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build query: %s args %v | %w", sqlStmt, sqlArgs, err)
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	var newPost Post
 	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(&newPost.Id); err != nil {
-		return nil, fmt.Errorf("failed to execute: %s args %v | %w", sqlStmt, sqlArgs, err)
+		return nil, fmt.Errorf("failed to execute: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	return &newPost, nil
 }
 
+func (r *Repository) CreatePostTags(ctx context.Context, tags []CreatePostTag) (err error) {
+	tx := ctx.Value(TxnKey).(pgx.Tx)
+	if tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	cols := []string{
+		"post_id",
+		"tag_id",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Insert("post_tag").
+		Columns(cols...)
+	for idx := range tags {
+		psql = psql.Values(
+			tags[idx].PostId,
+			tags[idx].TagId,
+		)
+	}
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
+}
+
 func (r *Repository) CreatePostMedias(ctx context.Context, medias []CreatePostMedia) (err error) {
 	tx := ctx.Value(TxnKey).(pgx.Tx)
 	if tx == nil {
-		tx, _ := r.db.Begin(ctx)
+		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
 				return tx.Rollback(ctx)
@@ -263,11 +312,50 @@ func (r *Repository) CreatePostMedias(ctx context.Context, medias []CreatePostMe
 
 	sqlStmt, sqlArgs, err := psql.ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build query: %s args %v | %w", sqlStmt, sqlArgs, err)
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
-		return fmt.Errorf("failed to execute query: %s args %v | %w", sqlStmt, sqlArgs, err)
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
+}
+
+func (r *Repository) CreatePostCategories(ctx context.Context, categories []CreatePostCategory) (err error) {
+	tx := ctx.Value(TxnKey).(pgx.Tx)
+	if tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	cols := []string{
+		"post_id",
+		"category_id",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Insert("post_category").
+		Columns(cols...)
+	for idx := range categories {
+		psql = psql.Values(
+			categories[idx].PostId,
+			categories[idx].CategoryId,
+		)
+	}
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
 	return nil

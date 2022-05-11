@@ -12,8 +12,10 @@ import (
 )
 
 type CreatePostPayload struct {
-	Data   repositories.CreatePost `json:"data" form:"data" binding:"required"`
-	Images []*multipart.FileHeader `json:"images" form:"images"`
+	Data        repositories.CreatePost `json:"data" form:"data" binding:"required"`
+	Images      []*multipart.FileHeader `json:"images" form:"images"`
+	TagIds      []string                `json:"tag_ids" form:"tag_ids"`
+	CategoryIds []string                `json:"category_ids" form:"category_ids"`
 }
 
 func (s *Service) GetPosts(c *gin.Context) {
@@ -52,21 +54,12 @@ func (s *Service) CreatePost(c *gin.Context) {
 	s.createPost(c)
 }
 
+func (s *Service) GetTags(c *gin.Context) {
+	s.getTags(c)
+}
+
 func (s *Service) GetCategories(c *gin.Context) {
-	categories, err := s.repo.GetCategories()
-	if err != nil {
-		log.Println("Failed to get categories", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while getting categories")
-		return
-	}
-
-	if len(categories) <= 0 {
-		log.Println("No categories found")
-		c.JSON(http.StatusNotFound, "No categories found")
-		return
-	}
-
-	c.JSON(http.StatusOK, categories)
+	s.getCategories(c)
 }
 
 func (s *Service) createPost(c *gin.Context) (err error) {
@@ -91,6 +84,36 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 	if err != nil {
 		s.repo.RollbackTxn(ctx)
 		return fmt.Errorf("failed to insert post | %w", err)
+	}
+
+	tags := []repositories.CreatePostTag{}
+	for idx := range payload.TagIds {
+		tags = append(tags, repositories.CreatePostTag{
+			PostId: post.Id,
+			TagId:  payload.TagIds[idx],
+		})
+	}
+
+	if len(tags) > 0 {
+		if err = s.repo.CreatePostTags(ctx, tags); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to create post tags | %w", err)
+		}
+	}
+
+	categories := []repositories.CreatePostCategory{}
+	for idx := range payload.CategoryIds {
+		categories = append(categories, repositories.CreatePostCategory{
+			PostId:     post.Id,
+			CategoryId: payload.CategoryIds[idx],
+		})
+	}
+
+	if len(categories) > 0 {
+		if err = s.repo.CreatePostCategories(ctx, categories); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to create post categories | %w", err)
+		}
 	}
 
 	images := []repositories.CreatePostMedia{}
@@ -134,4 +157,52 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 	c.JSON(http.StatusOK, post)
 
 	return s.repo.CommitTxn(ctx)
+}
+
+func (s *Service) getTags(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to get tags |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while getting tags")
+		}
+	}()
+
+	params := c.Request.URL.Query()
+
+	tags, err := s.repo.GetTags(c, params)
+	if err != nil {
+		return fmt.Errorf("failed to get tags | %w", err)
+	}
+
+	if len(tags) <= 0 {
+		c.JSON(http.StatusNotFound, "No tags found")
+		return nil
+	}
+
+	c.JSON(http.StatusOK, tags)
+
+	return nil
+}
+
+func (s *Service) getCategories(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to get categories |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while getting tags")
+		}
+	}()
+
+	categories, err := s.repo.GetCategories(c)
+	if err != nil {
+		return fmt.Errorf("failed to get categories | %w", err)
+	}
+
+	if len(categories) <= 0 {
+		c.JSON(http.StatusNotFound, "No categories found")
+		return nil
+	}
+
+	c.JSON(http.StatusOK, categories)
+
+	return nil
 }

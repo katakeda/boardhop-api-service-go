@@ -23,9 +23,13 @@ type IRepository interface {
 	GetPosts(ctx context.Context, params url.Values) ([]Post, error)
 	GetPost(ctx context.Context, id string) (*Post, error)
 	CreatePost(ctx context.Context, payload CreatePost) (*Post, error)
+	CreatePostTags(ctx context.Context, tags []CreatePostTag) error
 	CreatePostMedias(ctx context.Context, medias []CreatePostMedia) error
+	CreatePostCategories(ctx context.Context, categories []CreatePostCategory) error
 
-	GetCategories() ([]Category, error)
+	GetTags(ctx context.Context, params url.Values) ([]Tag, error)
+
+	GetCategories(ctx context.Context) ([]Category, error)
 
 	UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error)
 	GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error)
