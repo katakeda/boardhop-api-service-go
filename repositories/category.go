@@ -9,15 +9,16 @@ import (
 )
 
 type Category struct {
-	Id       *int    `db:"id"`
-	ParentId *int    `db:"parent_id"`
-	Name     *string `db:"name"`
-	Path     *string `db:"path"`
+	Id       *int    `json:"id" db:"id"`
+	ParentId *int    `json:"parentId" db:"parent_id"`
+	Path     *string `json:"path" db:"path"`
+	Value    *string `json:"value" db:"value"`
+	Label    *string `json:"label" db:"label"`
 }
 
 func (r *Repository) GetCategories(ctx context.Context) (categories []Category, err error) {
-	tx := ctx.Value(TxnKey).(pgx.Tx)
-	if tx == nil {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
 		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
@@ -30,8 +31,9 @@ func (r *Repository) GetCategories(ctx context.Context) (categories []Category, 
 	cols := []string{
 		"id",
 		"parent_id",
-		"name",
 		"path",
+		"value",
+		"label",
 	}
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
@@ -50,7 +52,7 @@ func (r *Repository) GetCategories(ctx context.Context) (categories []Category, 
 
 	for rows.Next() {
 		c := Category{}
-		rows.Scan(&c.Id, &c.ParentId, &c.Name, &c.Path)
+		rows.Scan(&c.Id, &c.ParentId, &c.Path, &c.Value, &c.Label)
 		categories = append(categories, c)
 	}
 

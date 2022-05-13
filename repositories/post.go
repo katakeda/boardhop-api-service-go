@@ -31,14 +31,15 @@ type Post struct {
 	CreatedAt       *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt       *time.Time `db:"deleted_at"`
 
-	Email      *string `json:"email" db:"email"`
-	AvatarUrl  *string `json:"avatarUrl" db:"avatar_url"`
-	Categories *string `json:"categories" db:"categories"`
-	Tags       *string `json:"tags" db:"tags"`
+	Email      *string     `json:"email" db:"email"`
+	AvatarUrl  *string     `json:"avatarUrl" db:"avatar_url"`
+	Categories *string     `json:"categories" db:"categories"`
+	Tags       *string     `json:"tags" db:"tags"`
+	Medias     []PostMedia `json:"medias" db:"medias"`
 }
 
 type PostMedia struct {
-	Id        string     `json:"id" db:"id"`
+	Id        int        `json:"id" db:"id"`
 	PostId    string     `json:"postId" db:"post_id"`
 	MediaUrl  string     `json:"mediaUrl" db:"media_url"`
 	Type      string     `json:"type" db:"type"`
@@ -92,7 +93,7 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		"a.created_at",
 		"b.email",
 		"b.avatar_url",
-		`string_agg(DISTINCT d. "name", ',') AS categories`,
+		`string_agg(DISTINCT d. "value", ',') AS categories`,
 		`string_agg(DISTINCT f. "value", ',') AS tags`,
 	}
 
@@ -104,11 +105,10 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		Join("category d ON c.category_id = d.id").
 		LeftJoin("post_tag e ON a.id = e.post_id").
 		LeftJoin("tag f ON e.tag_id = f.id").
-		LeftJoin("tag_type g ON f.type_id = g.id").
 		Where("d.path <@ ?", rootPath)
 
 	if categories := params.Get("cats"); categories != "" {
-		sqlBuilder = sqlBuilder.Where(sq.Eq{"d.name": strings.Split(categories, ",")})
+		sqlBuilder = sqlBuilder.Where(sq.Eq{"d.value": strings.Split(categories, ",")})
 	}
 
 	if tags := params.Get("tags"); tags != "" {
@@ -159,7 +159,7 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		"a.created_at",
 		"b.email",
 		"b.avatar_url",
-		`string_agg(DISTINCT d. "name", ',') AS categories`,
+		`string_agg(DISTINCT d. "value", ',') AS categories`,
 		`string_agg(DISTINCT f. "value", ',') AS tags`,
 	}
 
@@ -172,7 +172,6 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		Join("category d ON c.category_id = d.id").
 		LeftJoin("post_tag e ON a.id = e.post_id").
 		LeftJoin("tag f ON e.tag_id = f.id").
-		LeftJoin("tag_type g ON f.type_id = g.id").
 		Where(sq.Eq{"a.id": id}).
 		GroupBy("a.id", "b.id").
 		ToSql()
@@ -186,6 +185,10 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
 		}
+	}
+
+	if err := r.setPostMedias(ctx, &post); err != nil {
+		return nil, fmt.Errorf("failed to set post medias | %w", err)
 	}
 
 	return &post, nil
@@ -355,6 +358,30 @@ func (r *Repository) CreatePostCategories(ctx context.Context, categories []Crea
 	}
 
 	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
+}
+
+func (r *Repository) setPostMedias(ctx context.Context, post *Post) error {
+	cols := []string{
+		"id",
+		"post_id",
+		"media_url",
+		"type",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sqlStmt, sqlArgs, err := psql.Select(cols...).
+		From("post_media").
+		Where(sq.Eq{"post_id": post.Id}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if err := pgxscan.Select(ctx, r.db, &post.Medias, sqlStmt, sqlArgs...); err != nil {
 		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 

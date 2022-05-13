@@ -10,10 +10,10 @@ import (
 )
 
 type Tag struct {
-	Id    int    `db:"id"`
-	Type  string `db:"type"`
-	Value string `db:"value"`
-	Label string `db:"label"`
+	Id    int    `json:"id" db:"id"`
+	Type  string `json:"type" db:"type"`
+	Value string `json:"value" db:"value"`
+	Label string `json:"label" db:"label"`
 }
 
 func (r *Repository) GetTags(ctx context.Context, params url.Values) (tags []Tag, err error) {
