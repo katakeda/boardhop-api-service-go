@@ -34,7 +34,7 @@ type Post struct {
 	Email      *string     `json:"email" db:"email"`
 	AvatarUrl  *string     `json:"avatarUrl" db:"avatar_url"`
 	Categories *string     `json:"categories" db:"categories"`
-	Tags       *string     `json:"tags" db:"tags"`
+	Tags       []Tag       `json:"tags" db:"tags"`
 	Medias     []PostMedia `json:"medias" db:"medias"`
 }
 
@@ -160,7 +160,6 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		"b.email",
 		"b.avatar_url",
 		`string_agg(DISTINCT d. "value", ',') AS categories`,
-		`string_agg(DISTINCT f. "value", ',') AS tags`,
 	}
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
@@ -170,8 +169,6 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		Join(`"user" b ON a.user_id = b.id`).
 		Join("post_category c ON a.id = c.post_id").
 		Join("category d ON c.category_id = d.id").
-		LeftJoin("post_tag e ON a.id = e.post_id").
-		LeftJoin("tag f ON e.tag_id = f.id").
 		Where(sq.Eq{"a.id": id}).
 		GroupBy("a.id", "b.id").
 		ToSql()
@@ -191,12 +188,16 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		return nil, fmt.Errorf("failed to set post medias | %w", err)
 	}
 
+	if err := r.setPostTags(ctx, &post); err != nil {
+		return nil, fmt.Errorf("failed to set post tags | %w", err)
+	}
+
 	return &post, nil
 }
 
 func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *Post, err error) {
-	tx := ctx.Value(TxnKey).(pgx.Tx)
-	if tx == nil {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
 		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
@@ -246,8 +247,8 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *
 }
 
 func (r *Repository) CreatePostTags(ctx context.Context, tags []CreatePostTag) (err error) {
-	tx := ctx.Value(TxnKey).(pgx.Tx)
-	if tx == nil {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
 		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
@@ -285,8 +286,8 @@ func (r *Repository) CreatePostTags(ctx context.Context, tags []CreatePostTag) (
 }
 
 func (r *Repository) CreatePostMedias(ctx context.Context, medias []CreatePostMedia) (err error) {
-	tx := ctx.Value(TxnKey).(pgx.Tx)
-	if tx == nil {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
 		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
@@ -326,8 +327,8 @@ func (r *Repository) CreatePostMedias(ctx context.Context, medias []CreatePostMe
 }
 
 func (r *Repository) CreatePostCategories(ctx context.Context, categories []CreatePostCategory) (err error) {
-	tx := ctx.Value(TxnKey).(pgx.Tx)
-	if tx == nil {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
 		tx, _ = r.db.Begin(ctx)
 		defer func() error {
 			if err != nil {
@@ -364,7 +365,18 @@ func (r *Repository) CreatePostCategories(ctx context.Context, categories []Crea
 	return nil
 }
 
-func (r *Repository) setPostMedias(ctx context.Context, post *Post) error {
+func (r *Repository) setPostMedias(ctx context.Context, post *Post) (err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
 	cols := []string{
 		"id",
 		"post_id",
@@ -381,9 +393,65 @@ func (r *Repository) setPostMedias(ctx context.Context, post *Post) error {
 		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	if err := pgxscan.Select(ctx, r.db, &post.Medias, sqlStmt, sqlArgs...); err != nil {
+	rows, err := tx.Query(ctx, sqlStmt, sqlArgs...)
+	if err != nil {
 		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
+
+	postMedias := []PostMedia{}
+	for rows.Next() {
+		p := PostMedia{}
+		rows.Scan(&p.Id, &p.PostId, &p.MediaUrl, &p.Type)
+		postMedias = append(postMedias, p)
+	}
+
+	post.Medias = postMedias
+
+	return nil
+}
+
+func (r *Repository) setPostTags(ctx context.Context, post *Post) (err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	cols := []string{
+		"b.id",
+		"b.type",
+		"b.value",
+		"b.label",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sqlStmt, sqlArgs, err := psql.Select(cols...).
+		From("post_tag a").
+		Join(`"tag" b ON a.tag_id = b.id`).
+		Where(sq.Eq{"a.post_id": post.Id}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	rows, err := tx.Query(ctx, sqlStmt, sqlArgs...)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	postTags := []Tag{}
+	for rows.Next() {
+		t := Tag{}
+		rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label)
+		postTags = append(postTags, t)
+	}
+
+	post.Tags = postTags
 
 	return nil
 }
