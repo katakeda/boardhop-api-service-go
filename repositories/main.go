@@ -33,6 +33,8 @@ type IRepository interface {
 
 	UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error)
 	GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error)
+
+	CreateOrder(ctx context.Context, payload CreateOrderPayload) (*Order, error)
 }
 
 type Repository struct {
