@@ -45,12 +45,11 @@ func (app *App) Initialize() {
 	app.router.GET("/tags", svc.GetTags)
 	app.router.GET("/categories", svc.GetCategories)
 	app.router.GET("/user", AuthRequired(), svc.GetUser)
+	app.router.GET("/orders/:id", AuthRequired(), svc.GetOrder)
 
 	app.router.POST("/posts", svc.CreatePost)
-
 	app.router.POST("/user/signup", svc.UserSignup)
 	app.router.POST("/user/login", svc.UserLogin)
-
 	app.router.POST("/orders", svc.CreateOrder)
 }
 

@@ -20,6 +20,7 @@ type Order struct {
 	Total     float32    `json:"total" db:"total"`
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
+	Post      Post       `json:"post"`
 }
 
 type CreateOrderPayload struct {
@@ -30,6 +31,61 @@ type CreateOrderPayload struct {
 	Message   string  `json:"message"`
 	Quantity  int8    `json:"quantity"`
 	Total     float32 `json:"total"`
+}
+
+func (r *Repository) GetOrder(ctx context.Context, id string) (order *Order, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	cols := []string{
+		"id",
+		"post_id",
+		"user_id",
+		"payment_id",
+		"status",
+		"message",
+		"quantity",
+		"total",
+		"created_at",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Select(cols...).
+		From(`"order"`)
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	order = &Order{}
+	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(
+		&order.Id,
+		&order.PostId,
+		&order.UserId,
+		&order.PaymentId,
+		&order.Status,
+		&order.Message,
+		&order.Quantity,
+		&order.Total,
+		&order.CreatedAt,
+	); err != nil {
+		return nil, fmt.Errorf("failed to execute: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if err := r.setOrderPost(ctx, order); err != nil {
+		return nil, fmt.Errorf("failed to set order post | %w", err)
+	}
+
+	return order, nil
 }
 
 func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload) (order *Order, err error) {
@@ -81,4 +137,15 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 	}
 
 	return &newOrder, nil
+}
+
+func (r *Repository) setOrderPost(ctx context.Context, order *Order) (err error) {
+	post, err := r.GetPost(ctx, order.PostId)
+	if err != nil {
+		return fmt.Errorf("failed to get order post | %w", err)
+	}
+
+	order.Post = *post
+
+	return nil
 }
