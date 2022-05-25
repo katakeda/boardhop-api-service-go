@@ -54,6 +54,7 @@ func (r *Repository) CreateMessage(ctx context.Context, payload CreateMessagePay
 	}
 
 	vals := []interface{}{
+		// TODO: Get userId from JWT
 		"dde6cdb0-23d1-4657-a60d-2d04d4d6530c",
 		payload.PostId,
 		payload.OrderId,
