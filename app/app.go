@@ -51,6 +51,7 @@ func (app *App) Initialize() {
 	app.router.POST("/user/signup", svc.UserSignup)
 	app.router.POST("/user/login", svc.UserLogin)
 	app.router.POST("/orders", svc.CreateOrder)
+	app.router.POST("/messages", svc.CreateMessage)
 }
 
 func (app *App) Run() {

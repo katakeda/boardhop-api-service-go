@@ -36,6 +36,8 @@ type IRepository interface {
 
 	GetOrder(ctx context.Context, id string) (*Order, error)
 	CreateOrder(ctx context.Context, payload CreateOrderPayload) (*Order, error)
+
+	CreateMessage(ctx context.Context, payload CreateMessagePayload) (*Message, error)
 }
 
 type Repository struct {

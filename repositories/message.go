@@ -20,12 +20,62 @@ type Message struct {
 	AvatarUrl *string `json:"avatarUrl" db:"avatar_url"`
 }
 
+type CreateMessagePayload struct {
+	PostId  *string `json:"postId"`
+	OrderId *string `json:"orderId"`
+	Message *string `json:"message"`
+}
+
 func (r *Repository) GetMessagesByOrderId(ctx context.Context, orderId string) (messages []Message, err error) {
 	return r.getMessages(ctx, orderId, "order")
 }
 
 func (r *Repository) GetMessagesByPostId(ctx context.Context, postId string) (messages []Message, err error) {
 	return r.getMessages(ctx, postId, "post")
+}
+
+func (r *Repository) CreateMessage(ctx context.Context, payload CreateMessagePayload) (message *Message, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	cols := []string{
+		"user_id",
+		"post_id",
+		"order_id",
+		"message",
+	}
+
+	vals := []interface{}{
+		"dde6cdb0-23d1-4657-a60d-2d04d4d6530c",
+		payload.PostId,
+		payload.OrderId,
+		payload.Message,
+	}
+
+	sqlStmt, sqlArgs, err := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Insert("message").
+		Columns(cols...).
+		Values(vals...).
+		Suffix("RETURNING id").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	var newMessage Message
+	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(&newMessage.Id); err != nil {
+		return nil, fmt.Errorf("failed to execute: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return &newMessage, nil
 }
 
 func (r *Repository) getMessages(ctx context.Context, id string, by string) (messages []Message, err error) {
