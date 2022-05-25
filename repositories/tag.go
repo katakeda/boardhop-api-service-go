@@ -57,7 +57,9 @@ func (r *Repository) GetTags(ctx context.Context, params url.Values) (tags []Tag
 
 	for rows.Next() {
 		t := Tag{}
-		rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label)
+		if err := rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label); err != nil {
+			return nil, fmt.Errorf("failed to scan rows | %w", err)
+		}
 		tags = append(tags, t)
 	}
 

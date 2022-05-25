@@ -401,7 +401,9 @@ func (r *Repository) setPostMedias(ctx context.Context, post *Post) (err error) 
 	postMedias := []PostMedia{}
 	for rows.Next() {
 		p := PostMedia{}
-		rows.Scan(&p.Id, &p.PostId, &p.MediaUrl, &p.Type)
+		if err := rows.Scan(&p.Id, &p.PostId, &p.MediaUrl, &p.Type); err != nil {
+			return fmt.Errorf("failed to scan rows | %w", err)
+		}
 		postMedias = append(postMedias, p)
 	}
 
@@ -447,7 +449,9 @@ func (r *Repository) setPostTags(ctx context.Context, post *Post) (err error) {
 	postTags := []Tag{}
 	for rows.Next() {
 		t := Tag{}
-		rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label)
+		if err := rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label); err != nil {
+			return fmt.Errorf("failed to scan rows | %w", err)
+		}
 		postTags = append(postTags, t)
 	}
 

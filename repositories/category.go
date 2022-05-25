@@ -52,7 +52,9 @@ func (r *Repository) GetCategories(ctx context.Context) (categories []Category, 
 
 	for rows.Next() {
 		c := Category{}
-		rows.Scan(&c.Id, &c.ParentId, &c.Path, &c.Value, &c.Label)
+		if err := rows.Scan(&c.Id, &c.ParentId, &c.Path, &c.Value, &c.Label); err != nil {
+			return nil, fmt.Errorf("failed to scan rows | %w", err)
+		}
 		categories = append(categories, c)
 	}
 

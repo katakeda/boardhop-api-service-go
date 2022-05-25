@@ -21,6 +21,7 @@ type Order struct {
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
 	Post      Post       `json:"post"`
+	Messages  []Message  `json:"messages"`
 }
 
 type CreateOrderPayload struct {
@@ -59,7 +60,8 @@ func (r *Repository) GetOrder(ctx context.Context, id string) (order *Order, err
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
 		Select(cols...).
-		From(`"order"`)
+		From(`"order"`).
+		Where(sq.Eq{"id": id})
 
 	sqlStmt, sqlArgs, err := psql.ToSql()
 	if err != nil {
@@ -83,6 +85,10 @@ func (r *Repository) GetOrder(ctx context.Context, id string) (order *Order, err
 
 	if err := r.setOrderPost(ctx, order); err != nil {
 		return nil, fmt.Errorf("failed to set order post | %w", err)
+	}
+
+	if err := r.setOrderMessages(ctx, order); err != nil {
+		return nil, fmt.Errorf("failed to set order message | %w", err)
 	}
 
 	return order, nil
@@ -146,6 +152,17 @@ func (r *Repository) setOrderPost(ctx context.Context, order *Order) (err error)
 	}
 
 	order.Post = *post
+
+	return nil
+}
+
+func (r *Repository) setOrderMessages(ctx context.Context, order *Order) (err error) {
+	messages, err := r.GetMessagesByOrderId(ctx, order.Id)
+	if err != nil {
+		return fmt.Errorf("failed to get order messages | %w", err)
+	}
+
+	order.Messages = messages
 
 	return nil
 }
