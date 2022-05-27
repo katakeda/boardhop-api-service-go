@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -45,18 +46,32 @@ func (s *Service) UserLogin(c *gin.Context) {
 }
 
 func (s *Service) GetUser(c *gin.Context) {
-	googleAuthId, ok := c.Get("googleAuthId")
-	if !ok {
+	user, err := s.getUser(c)
+	if err != nil {
+		log.Println("Failed to get user |", err)
 		c.JSON(http.StatusUnauthorized, "Failed to authorize user")
 		return
 	}
 
-	user, err := s.repo.GetUserByGoogleAuthId(c, googleAuthId)
-	if err != nil {
-		log.Println("Failed to get user", err)
-		c.JSON(http.StatusNotFound, "Failed to get user")
-		return
+	c.JSON(http.StatusOK, user)
+}
+
+func (s *Service) getUser(c *gin.Context) (user *repositories.User, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to get user | %w", err)
+		}
+	}()
+
+	googleAuthId, ok := c.Get("googleAuthId")
+	if !ok {
+		return nil, fmt.Errorf("failed to authorize user")
 	}
 
-	c.JSON(http.StatusOK, user)
+	user, err = s.repo.GetUserByGoogleAuthId(c, googleAuthId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user | %w", err)
+	}
+
+	return user, nil
 }

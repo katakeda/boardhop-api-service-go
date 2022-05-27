@@ -94,7 +94,6 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		"b.email",
 		"b.avatar_url",
 		`string_agg(DISTINCT d. "value", ',') AS categories`,
-		`string_agg(DISTINCT f. "value", ',') AS tags`,
 	}
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
@@ -113,6 +112,10 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 
 	if tags := params.Get("tags"); tags != "" {
 		sqlBuilder = sqlBuilder.Where(sq.Eq{"f.value": strings.Split(tags, ",")})
+	}
+
+	if userId := params.Get("uid"); userId != "" {
+		sqlBuilder = sqlBuilder.Where(sq.Eq{"a.user_id": userId})
 	}
 
 	offset := 0

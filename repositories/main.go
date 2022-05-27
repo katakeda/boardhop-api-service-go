@@ -34,6 +34,7 @@ type IRepository interface {
 	UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error)
 	GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error)
 
+	GetOrders(ctx context.Context, filter GetOrdersFilter) ([]Order, error)
 	GetOrder(ctx context.Context, id string) (*Order, error)
 	CreateOrder(ctx context.Context, payload CreateOrderPayload) (*Order, error)
 

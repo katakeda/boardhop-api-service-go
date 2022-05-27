@@ -9,12 +9,39 @@ import (
 	"github.com/katakeda/boardhop-api-service-go/repositories"
 )
 
+func (s *Service) GetOrders(c *gin.Context) {
+	s.getOrders(c)
+}
+
 func (s *Service) GetOrder(c *gin.Context) {
 	s.getOrder(c)
 }
 
 func (s *Service) CreateOrder(c *gin.Context) {
 	s.createOrder(c)
+}
+
+func (s *Service) getOrders(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to get orders |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while getting orders")
+		}
+	}()
+
+	user, err := s.getUser(c)
+	if err != nil {
+		return fmt.Errorf("failed to authorize user | %w", err)
+	}
+
+	orders, err := s.repo.GetOrders(c, repositories.GetOrdersFilter{UserId: &user.Id})
+	if err != nil {
+		return fmt.Errorf("failed to fetch orders | %w", err)
+	}
+
+	c.JSON(http.StatusOK, orders)
+
+	return nil
 }
 
 func (s *Service) getOrder(c *gin.Context) (err error) {

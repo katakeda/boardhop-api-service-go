@@ -45,6 +45,7 @@ func (app *App) Initialize() {
 	app.router.GET("/tags", svc.GetTags)
 	app.router.GET("/categories", svc.GetCategories)
 	app.router.GET("/user", AuthRequired(), svc.GetUser)
+	app.router.GET("/orders", AuthRequired(), svc.GetOrders)
 	app.router.GET("/orders/:id", AuthRequired(), svc.GetOrder)
 
 	app.router.POST("/posts", svc.CreatePost)

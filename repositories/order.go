@@ -34,6 +34,74 @@ type CreateOrderPayload struct {
 	Total     float32 `json:"total"`
 }
 
+type GetOrdersFilter struct {
+	UserId *string
+}
+
+func (r *Repository) GetOrders(ctx context.Context, filter GetOrdersFilter) (orders []Order, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	if filter.UserId == nil {
+		return nil, fmt.Errorf("userId cant be empty")
+	}
+
+	cols := []string{
+		"id",
+		"post_id",
+		"user_id",
+		"payment_id",
+		"status",
+		"message",
+		"quantity",
+		"total",
+		"created_at",
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Select(cols...).
+		From(`"order"`).
+		Where(sq.Eq{"user_id": filter.UserId})
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	rows, err := tx.Query(ctx, sqlStmt, sqlArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	for rows.Next() {
+		o := Order{}
+		if err := rows.Scan(
+			&o.Id,
+			&o.PostId,
+			&o.UserId,
+			&o.PaymentId,
+			&o.Status,
+			&o.Message,
+			&o.Quantity,
+			&o.Total,
+			&o.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan rows | %w", err)
+		}
+		orders = append(orders, o)
+	}
+
+	return orders, nil
+}
+
 func (r *Repository) GetOrder(ctx context.Context, id string) (order *Order, err error) {
 	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
 	if !ok || tx == nil {
