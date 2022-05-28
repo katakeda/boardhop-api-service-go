@@ -29,9 +29,11 @@ type CreateOrderPayload struct {
 	UserId    string  `json:"userId"`
 	PaymentId string  `json:"paymentId"`
 	Status    string  `json:"status"`
-	Message   string  `json:"message"`
 	Quantity  int8    `json:"quantity"`
 	Total     float32 `json:"total"`
+	Message   *string `json:"message"`
+	StartDate *string `json:"startDate"`
+	EndDate   *string `json:"endDate"`
 }
 
 type GetOrdersFilter struct {
