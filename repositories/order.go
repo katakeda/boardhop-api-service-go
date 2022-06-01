@@ -15,7 +15,6 @@ type Order struct {
 	UserId    string     `json:"userId" db:"user_id"`
 	PaymentId string     `json:"paymentId" db:"payment_id"`
 	Status    string     `json:"status" db:"status"`
-	Message   string     `json:"message" db:"message"`
 	Quantity  int8       `json:"quantity" db:"quantity"`
 	Total     float32    `json:"total" db:"total"`
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
@@ -62,7 +61,6 @@ func (r *Repository) GetOrders(ctx context.Context, filter GetOrdersFilter) (ord
 		"user_id",
 		"payment_id",
 		"status",
-		"message",
 		"quantity",
 		"total",
 		"created_at",
@@ -91,7 +89,6 @@ func (r *Repository) GetOrders(ctx context.Context, filter GetOrdersFilter) (ord
 			&o.UserId,
 			&o.PaymentId,
 			&o.Status,
-			&o.Message,
 			&o.Quantity,
 			&o.Total,
 			&o.CreatedAt,
@@ -122,7 +119,6 @@ func (r *Repository) GetOrder(ctx context.Context, id string) (order *Order, err
 		"user_id",
 		"payment_id",
 		"status",
-		"message",
 		"quantity",
 		"total",
 		"created_at",
@@ -145,7 +141,6 @@ func (r *Repository) GetOrder(ctx context.Context, id string) (order *Order, err
 		&order.UserId,
 		&order.PaymentId,
 		&order.Status,
-		&order.Message,
 		&order.Quantity,
 		&order.Total,
 		&order.CreatedAt,
@@ -181,7 +176,6 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 		"user_id",
 		"payment_id",
 		"status",
-		"message",
 		"quantity",
 		"total",
 	}
@@ -191,7 +185,6 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 		payload.UserId,
 		payload.PaymentId,
 		payload.Status,
-		payload.Message,
 		payload.Quantity,
 		payload.Total,
 	}
