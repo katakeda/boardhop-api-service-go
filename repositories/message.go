@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -122,12 +123,8 @@ func (r *Repository) getMessages(ctx context.Context, id string, by string) (mes
 		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	for rows.Next() {
-		m := Message{}
-		if err := rows.Scan(&m.Id, &m.UserId, &m.PostId, &m.OrderId, &m.Message, &m.CreatedAt, &m.AvatarUrl); err != nil {
-			return nil, fmt.Errorf("failed to scan rows | %w", err)
-		}
-		messages = append(messages, m)
+	if err := pgxscan.ScanAll(&messages, rows); err != nil {
+		return nil, fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	return messages, nil

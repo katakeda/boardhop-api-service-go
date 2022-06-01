@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -50,12 +51,8 @@ func (r *Repository) GetCategories(ctx context.Context) (categories []Category, 
 		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	for rows.Next() {
-		c := Category{}
-		if err := rows.Scan(&c.Id, &c.ParentId, &c.Path, &c.Value, &c.Label); err != nil {
-			return nil, fmt.Errorf("failed to scan rows | %w", err)
-		}
-		categories = append(categories, c)
+	if err := pgxscan.ScanAll(&categories, rows); err != nil {
+		return nil, fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	return categories, nil

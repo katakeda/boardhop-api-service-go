@@ -82,12 +82,21 @@ type CreatePostCategory struct {
 }
 
 // TODO: Replace params with filters
-func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, error) {
-	var rootPath string
+func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []Post, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	rootPath := SURFBOARD_PATH
 	if params.Get("type") == "snowboard" {
 		rootPath = SNOWBOARD_PATH
-	} else {
-		rootPath = SURFBOARD_PATH
 	}
 
 	cols := []string{
@@ -104,9 +113,8 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		`string_agg(DISTINCT d. "value", ',') AS categories`,
 	}
 
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	sqlBuilder := psql.Select(cols...).From("post a").
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Select(cols...).From("post a").
 		Join(`"user" b ON a.user_id = b.id`).
 		Join("post_category c ON a.id = c.post_id").
 		Join("category d ON c.category_id = d.id").
@@ -115,15 +123,15 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		Where("d.path <@ ?", rootPath)
 
 	if categories := params.Get("cats"); categories != "" {
-		sqlBuilder = sqlBuilder.Where(sq.Eq{"d.value": strings.Split(categories, ",")})
+		psql = psql.Where(sq.Eq{"d.value": strings.Split(categories, ",")})
 	}
 
 	if tags := params.Get("tags"); tags != "" {
-		sqlBuilder = sqlBuilder.Where(sq.Eq{"f.value": strings.Split(tags, ",")})
+		psql = psql.Where(sq.Eq{"f.value": strings.Split(tags, ",")})
 	}
 
 	if userId := params.Get("uid"); userId != "" {
-		sqlBuilder = sqlBuilder.Where(sq.Eq{"a.user_id": userId})
+		psql = psql.Where(sq.Eq{"a.user_id": userId})
 	}
 
 	offset := 0
@@ -135,23 +143,21 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) ([]Post, e
 		}
 	}
 
-	var sqlStmt string
-	var sqlArgs []interface{}
-	{
-		var err error
-		sqlStmt, sqlArgs, err = sqlBuilder.Offset(uint64(offset)*PER_PAGE_MAX).
-			Limit(PER_PAGE_MAX).
-			GroupBy("a.id", "b.id").
-			ToSql()
-		if err != nil {
-			return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
-		}
+	sqlStmt, sqlArgs, err := psql.Offset(uint64(offset)*PER_PAGE_MAX).
+		Limit(PER_PAGE_MAX).
+		GroupBy("a.id", "b.id").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	var posts []Post
-	err := pgxscan.Select(ctx, r.db, &posts, sqlStmt, sqlArgs...)
+	rows, err := tx.Query(ctx, sqlStmt, sqlArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if err := pgxscan.ScanAll(&posts, rows); err != nil {
+		return nil, fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	return posts, nil
@@ -410,12 +416,8 @@ func (r *Repository) setPostMedias(ctx context.Context, post *Post) (err error) 
 	}
 
 	postMedias := []PostMedia{}
-	for rows.Next() {
-		p := PostMedia{}
-		if err := rows.Scan(&p.Id, &p.PostId, &p.MediaUrl, &p.Type); err != nil {
-			return fmt.Errorf("failed to scan rows | %w", err)
-		}
-		postMedias = append(postMedias, p)
+	if err := pgxscan.ScanAll(&postMedias, rows); err != nil {
+		return fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	post.Medias = postMedias
@@ -458,12 +460,8 @@ func (r *Repository) setPostTags(ctx context.Context, post *Post) (err error) {
 	}
 
 	postTags := []Tag{}
-	for rows.Next() {
-		t := Tag{}
-		if err := rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label); err != nil {
-			return fmt.Errorf("failed to scan rows | %w", err)
-		}
-		postTags = append(postTags, t)
+	if err := pgxscan.ScanAll(&postTags, rows); err != nil {
+		return fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	post.Tags = postTags

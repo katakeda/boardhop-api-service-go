@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -55,12 +56,8 @@ func (r *Repository) GetTags(ctx context.Context, params url.Values) (tags []Tag
 		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	for rows.Next() {
-		t := Tag{}
-		if err := rows.Scan(&t.Id, &t.Type, &t.Value, &t.Label); err != nil {
-			return nil, fmt.Errorf("failed to scan rows | %w", err)
-		}
-		tags = append(tags, t)
+	if err := pgxscan.ScanAll(&tags, rows); err != nil {
+		return nil, fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	return tags, nil

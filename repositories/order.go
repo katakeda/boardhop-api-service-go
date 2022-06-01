@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -83,21 +84,8 @@ func (r *Repository) GetOrders(ctx context.Context, filter GetOrdersFilter) (ord
 		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	for rows.Next() {
-		o := Order{}
-		if err := rows.Scan(
-			&o.Id,
-			&o.PostId,
-			&o.UserId,
-			&o.PaymentId,
-			&o.Status,
-			&o.Quantity,
-			&o.Total,
-			&o.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan rows | %w", err)
-		}
-		orders = append(orders, o)
+	if err := pgxscan.ScanAll(&orders, rows); err != nil {
+		return nil, fmt.Errorf("failed to scan rows | %w", err)
 	}
 
 	return orders, nil
