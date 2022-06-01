@@ -17,6 +17,8 @@ type Order struct {
 	Status    string     `json:"status" db:"status"`
 	Quantity  int8       `json:"quantity" db:"quantity"`
 	Total     float32    `json:"total" db:"total"`
+	StartDate *time.Time `json:"startDate" db:"start_date"`
+	EndDate   *time.Time `json:"endDate" db:"end_date"`
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
 	Post      Post       `json:"post"`
@@ -178,6 +180,8 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 		"status",
 		"quantity",
 		"total",
+		"start_date",
+		"end_date",
 	}
 
 	vals := []interface{}{
@@ -187,6 +191,8 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 		payload.Status,
 		payload.Quantity,
 		payload.Total,
+		payload.StartDate,
+		payload.EndDate,
 	}
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
