@@ -16,21 +16,58 @@ type IRepository struct {
 	mock.Mock
 }
 
-// CreatePost provides a mock function with given fields: ctx, payload
-func (_m *IRepository) CreatePost(ctx context.Context, payload repositories.CreatePostPayload) (*repositories.Post, error) {
-	ret := _m.Called(ctx, payload)
+// BeginTxn provides a mock function with given fields: ctx
+func (_m *IRepository) BeginTxn(ctx context.Context) (context.Context, error) {
+	ret := _m.Called(ctx)
 
-	var r0 *repositories.Post
-	if rf, ok := ret.Get(0).(func(context.Context, repositories.CreatePostPayload) *repositories.Post); ok {
-		r0 = rf(ctx, payload)
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func(context.Context) context.Context); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*repositories.Post)
+			r0 = ret.Get(0).(context.Context)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, repositories.CreatePostPayload) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CommitTxn provides a mock function with given fields: ctx
+func (_m *IRepository) CommitTxn(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CreateMessage provides a mock function with given fields: ctx, payload
+func (_m *IRepository) CreateMessage(ctx context.Context, payload repositories.CreateMessagePayload) (*repositories.Message, error) {
+	ret := _m.Called(ctx, payload)
+
+	var r0 *repositories.Message
+	if rf, ok := ret.Get(0).(func(context.Context, repositories.CreateMessagePayload) *repositories.Message); ok {
+		r0 = rf(ctx, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.Message)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, repositories.CreateMessagePayload) error); ok {
 		r1 = rf(ctx, payload)
 	} else {
 		r1 = ret.Error(1)
@@ -39,13 +76,101 @@ func (_m *IRepository) CreatePost(ctx context.Context, payload repositories.Crea
 	return r0, r1
 }
 
-// GetCategories provides a mock function with given fields:
-func (_m *IRepository) GetCategories() ([]repositories.Category, error) {
-	ret := _m.Called()
+// CreateOrder provides a mock function with given fields: ctx, payload
+func (_m *IRepository) CreateOrder(ctx context.Context, payload repositories.CreateOrderPayload) (*repositories.Order, error) {
+	ret := _m.Called(ctx, payload)
+
+	var r0 *repositories.Order
+	if rf, ok := ret.Get(0).(func(context.Context, repositories.CreateOrderPayload) *repositories.Order); ok {
+		r0 = rf(ctx, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, repositories.CreateOrderPayload) error); ok {
+		r1 = rf(ctx, payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CreatePost provides a mock function with given fields: ctx, payload
+func (_m *IRepository) CreatePost(ctx context.Context, payload repositories.CreatePost) (*repositories.Post, error) {
+	ret := _m.Called(ctx, payload)
+
+	var r0 *repositories.Post
+	if rf, ok := ret.Get(0).(func(context.Context, repositories.CreatePost) *repositories.Post); ok {
+		r0 = rf(ctx, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.Post)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, repositories.CreatePost) error); ok {
+		r1 = rf(ctx, payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CreatePostCategories provides a mock function with given fields: ctx, categories
+func (_m *IRepository) CreatePostCategories(ctx context.Context, categories []repositories.CreatePostCategory) error {
+	ret := _m.Called(ctx, categories)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []repositories.CreatePostCategory) error); ok {
+		r0 = rf(ctx, categories)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CreatePostMedias provides a mock function with given fields: ctx, medias
+func (_m *IRepository) CreatePostMedias(ctx context.Context, medias []repositories.CreatePostMedia) error {
+	ret := _m.Called(ctx, medias)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []repositories.CreatePostMedia) error); ok {
+		r0 = rf(ctx, medias)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CreatePostTags provides a mock function with given fields: ctx, tags
+func (_m *IRepository) CreatePostTags(ctx context.Context, tags []repositories.CreatePostTag) error {
+	ret := _m.Called(ctx, tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []repositories.CreatePostTag) error); ok {
+		r0 = rf(ctx, tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetCategories provides a mock function with given fields: ctx
+func (_m *IRepository) GetCategories(ctx context.Context) ([]repositories.Category, error) {
+	ret := _m.Called(ctx)
 
 	var r0 []repositories.Category
-	if rf, ok := ret.Get(0).(func() []repositories.Category); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []repositories.Category); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]repositories.Category)
@@ -53,8 +178,54 @@ func (_m *IRepository) GetCategories() ([]repositories.Category, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetOrder provides a mock function with given fields: ctx, id
+func (_m *IRepository) GetOrder(ctx context.Context, id string) (*repositories.Order, error) {
+	ret := _m.Called(ctx, id)
+
+	var r0 *repositories.Order
+	if rf, ok := ret.Get(0).(func(context.Context, string) *repositories.Order); ok {
+		r0 = rf(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetOrders provides a mock function with given fields: ctx, filter
+func (_m *IRepository) GetOrders(ctx context.Context, filter repositories.GetOrdersFilter) ([]repositories.Order, error) {
+	ret := _m.Called(ctx, filter)
+
+	var r0 []repositories.Order
+	if rf, ok := ret.Get(0).(func(context.Context, repositories.GetOrdersFilter) []repositories.Order); ok {
+		r0 = rf(ctx, filter)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repositories.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, repositories.GetOrdersFilter) error); ok {
+		r1 = rf(ctx, filter)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -101,6 +272,89 @@ func (_m *IRepository) GetPosts(ctx context.Context, params url.Values) ([]repos
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, url.Values) error); ok {
 		r1 = rf(ctx, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetTags provides a mock function with given fields: ctx, params
+func (_m *IRepository) GetTags(ctx context.Context, params url.Values) ([]repositories.Tag, error) {
+	ret := _m.Called(ctx, params)
+
+	var r0 []repositories.Tag
+	if rf, ok := ret.Get(0).(func(context.Context, url.Values) []repositories.Tag); ok {
+		r0 = rf(ctx, params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repositories.Tag)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, url.Values) error); ok {
+		r1 = rf(ctx, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetUserByGoogleAuthId provides a mock function with given fields: ctx, googleAuthId
+func (_m *IRepository) GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*repositories.User, error) {
+	ret := _m.Called(ctx, googleAuthId)
+
+	var r0 *repositories.User
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}) *repositories.User); ok {
+		r0 = rf(ctx, googleAuthId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.User)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}) error); ok {
+		r1 = rf(ctx, googleAuthId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RollbackTxn provides a mock function with given fields: ctx
+func (_m *IRepository) RollbackTxn(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UserSignup provides a mock function with given fields: ctx, payload
+func (_m *IRepository) UserSignup(ctx context.Context, payload repositories.UserSignupPayload) (*repositories.User, error) {
+	ret := _m.Called(ctx, payload)
+
+	var r0 *repositories.User
+	if rf, ok := ret.Get(0).(func(context.Context, repositories.UserSignupPayload) *repositories.User); ok {
+		r0 = rf(ctx, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.User)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, repositories.UserSignupPayload) error); ok {
+		r1 = rf(ctx, payload)
 	} else {
 		r1 = ret.Error(1)
 	}

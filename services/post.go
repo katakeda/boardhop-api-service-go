@@ -3,20 +3,12 @@ package services
 import (
 	"fmt"
 	"log"
-	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/katakeda/boardhop-api-service-go/repositories"
 	"github.com/katakeda/boardhop-api-service-go/utils"
 )
-
-type CreatePostPayload struct {
-	Data        repositories.CreatePost `json:"data" form:"data" binding:"required"`
-	Images      []*multipart.FileHeader `json:"images" form:"images"`
-	TagIds      []string                `json:"tag_ids" form:"tag_ids"`
-	CategoryIds []string                `json:"category_ids" form:"category_ids"`
-}
 
 func (s *Service) GetPosts(c *gin.Context) {
 	params := c.Request.URL.Query()
@@ -70,7 +62,7 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 		}
 	}()
 
-	payload := CreatePostPayload{}
+	payload := repositories.CreatePostPayload{}
 	if err = c.ShouldBind(&payload); err != nil {
 		return fmt.Errorf("failed to parse payload | %w", err)
 	}

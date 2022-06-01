@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"mime/multipart"
 	"net/url"
 	"strconv"
 	"strings"
@@ -45,6 +46,13 @@ type PostMedia struct {
 	Type      string     `json:"type" db:"type"`
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
 	DeletedAt *time.Time `db:"deleted_at"`
+}
+
+type CreatePostPayload struct {
+	Data        CreatePost              `json:"data" form:"data" binding:"required"`
+	Images      []*multipart.FileHeader `json:"images" form:"images"`
+	TagIds      []string                `json:"tag_ids" form:"tag_ids"`
+	CategoryIds []string                `json:"category_ids" form:"category_ids"`
 }
 
 type CreatePost struct {
