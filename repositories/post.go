@@ -15,9 +15,18 @@ import (
 )
 
 const (
-	SURFBOARD_PATH = "root.1"
-	SNOWBOARD_PATH = "root.2"
-	PER_PAGE_MAX   = 25
+	PER_PAGE_MAX = 3
+)
+
+var (
+	CATEGORY_PATH = map[string]string{
+		"all":       "root",
+		"surfboard": "root.1",
+		"snowboard": "root.2",
+		"eps":       "root.1.3",
+		"pu":        "root.1.3",
+		"wideboard": "root.2.4",
+	}
 )
 
 type Post struct {
@@ -94,11 +103,6 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []P
 		}()
 	}
 
-	rootPath := SURFBOARD_PATH
-	if params.Get("type") == "snowboard" {
-		rootPath = SNOWBOARD_PATH
-	}
-
 	cols := []string{
 		"a.id",
 		"a.user_id",
@@ -119,11 +123,13 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []P
 		Join("post_category c ON a.id = c.post_id").
 		Join("category d ON c.category_id = d.id").
 		LeftJoin("post_tag e ON a.id = e.post_id").
-		LeftJoin("tag f ON e.tag_id = f.id").
-		Where("d.path <@ ?", rootPath)
+		LeftJoin("tag f ON e.tag_id = f.id")
 
 	if categories := params.Get("cats"); categories != "" {
-		psql = psql.Where(sq.Eq{"d.value": strings.Split(categories, ",")})
+		category := strings.Split(categories, ",")[0]
+		if path, exists := CATEGORY_PATH[category]; exists {
+			psql = psql.Where("d.path <@ ?", path)
+		}
 	}
 
 	if tags := params.Get("tags"); tags != "" {
@@ -136,7 +142,6 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []P
 
 	offset := 0
 	if page := params.Get("p"); page != "" {
-		var err error
 		offset, err = strconv.Atoi(page)
 		if err != nil {
 			offset = 0
@@ -158,6 +163,12 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []P
 
 	if err := pgxscan.ScanAll(&posts, rows); err != nil {
 		return nil, fmt.Errorf("failed to scan rows | %w", err)
+	}
+
+	for idx := range posts {
+		if err := r.setPostMedias(ctx, &posts[idx]); err != nil {
+			return nil, fmt.Errorf("failed to set post medias | %w", err)
+		}
 	}
 
 	return posts, nil
