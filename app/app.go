@@ -48,9 +48,9 @@ func (app *App) Initialize() {
 	app.router.GET("/orders", AuthRequired(), svc.GetOrders)
 	app.router.GET("/orders/:id", AuthRequired(), svc.GetOrder)
 
-	app.router.POST("/posts", svc.CreatePost)
 	app.router.POST("/user/signup", svc.UserSignup)
 	app.router.POST("/user/login", svc.UserLogin)
+	app.router.POST("/posts", AuthRequired(), svc.CreatePost)
 	app.router.POST("/orders", svc.CreateOrder)
 	app.router.POST("/messages", svc.CreateMessage)
 }

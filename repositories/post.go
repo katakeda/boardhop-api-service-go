@@ -65,7 +65,7 @@ type CreatePostPayload struct {
 }
 
 type CreatePost struct {
-	UserId          string   `json:"userId"`
+	UserId          string
 	Title           string   `json:"title"`
 	Price           float32  `json:"price"`
 	Rate            string   `json:"rate"`

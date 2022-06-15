@@ -8,7 +8,6 @@ require (
 	github.com/Masterminds/squirrel v1.5.2
 	github.com/georgysavva/scany v0.2.9
 	github.com/gin-gonic/gin v1.7.2
-	github.com/google/uuid v1.1.2
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/joho/godotenv v1.4.0
 	github.com/stretchr/testify v1.7.0

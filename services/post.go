@@ -67,6 +67,13 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 		return fmt.Errorf("failed to parse payload | %w", err)
 	}
 
+	user, err := s.getUser(c)
+	if err != nil || user == nil {
+		return fmt.Errorf("failed to authorize user | %w", err)
+	}
+
+	payload.Data.UserId = user.Id
+
 	ctx, err := s.repo.BeginTxn(c)
 	if err != nil {
 		return fmt.Errorf("failed to begin db txn | %w", err)
