@@ -27,8 +27,8 @@ type Order struct {
 }
 
 type CreateOrderPayload struct {
+	UserId    string
 	PostId    string  `json:"postId"`
-	UserId    string  `json:"userId"`
 	PaymentId string  `json:"paymentId"`
 	Status    string  `json:"status"`
 	Quantity  int8    `json:"quantity"`
@@ -162,8 +162,8 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 	}
 
 	cols := []string{
-		"post_id",
 		"user_id",
+		"post_id",
 		"payment_id",
 		"status",
 		"quantity",
@@ -173,8 +173,8 @@ func (r *Repository) CreateOrder(ctx context.Context, payload CreateOrderPayload
 	}
 
 	vals := []interface{}{
-		payload.PostId,
 		payload.UserId,
+		payload.PostId,
 		payload.PaymentId,
 		payload.Status,
 		payload.Quantity,

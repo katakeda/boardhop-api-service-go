@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
+	"github.com/katakeda/boardhop-api-service-go/utils"
 )
 
 type Tag struct {
@@ -40,11 +42,16 @@ func (r *Repository) GetTags(ctx context.Context, params url.Values) (tags []Tag
 		Select(cols...).
 		From("tag")
 
-	if rootType := params.Get("type"); rootType == "snowboard" {
-		psql = psql.Where(sq.Eq{"type": []string{"Snowboard Brand", "Skill Level"}})
-	} else {
-		psql = psql.Where(sq.Eq{"type": []string{"Surfboard Brand", "Skill Level"}})
+	types := []string{"Skill Level"}
+	typeArr := strings.Split(params.Get("type"), ",")
+	typeMap := utils.StrArrayToMap(typeArr)
+	if _, exists := typeMap["surfboard"]; exists {
+		types = append(types, "Surfboard Brand")
 	}
+	if _, exists := typeMap["snowboard"]; exists {
+		types = append(types, "Snowboard Brand")
+	}
+	psql = psql.Where(sq.Eq{"type": types})
 
 	sqlStmt, sqlArgs, err := psql.ToSql()
 	if err != nil {

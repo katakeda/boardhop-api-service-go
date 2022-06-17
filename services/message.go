@@ -26,6 +26,13 @@ func (s *Service) createMessage(c *gin.Context) (err error) {
 		return fmt.Errorf("failed to parse payload | %w", err)
 	}
 
+	user, err := s.getUser(c)
+	if err != nil || user == nil {
+		return fmt.Errorf("failed to authorize user | %w", err)
+	}
+
+	payload.UserId = user.Id
+
 	message, err := s.repo.CreateMessage(c, payload)
 	if err != nil {
 		return fmt.Errorf("failed to insert message | %w", err)

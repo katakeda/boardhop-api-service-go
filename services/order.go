@@ -79,13 +79,20 @@ func (s *Service) createOrder(c *gin.Context) (err error) {
 		return fmt.Errorf("failed to parse payload | %w", err)
 	}
 
+	user, err := s.getUser(c)
+	if err != nil || user == nil {
+		return fmt.Errorf("failed to authorize user | %w", err)
+	}
+
+	payload.UserId = user.Id
+
 	order, err := s.repo.CreateOrder(ctx, payload)
 	if err != nil {
 		return fmt.Errorf("failed to insert order | %w", err)
 	}
 
 	if payload.Message != nil {
-		message, err := s.repo.CreateMessage(ctx, repositories.CreateMessagePayload{OrderId: &order.Id, Message: payload.Message})
+		message, err := s.repo.CreateMessage(ctx, repositories.CreateMessagePayload{UserId: user.Id, OrderId: &order.Id, Message: payload.Message})
 		if err != nil {
 			return fmt.Errorf("failed to insert order message | %w", err)
 		}
