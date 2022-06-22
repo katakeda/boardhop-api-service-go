@@ -6,6 +6,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 )
 
 type User struct {
@@ -30,9 +31,19 @@ type UserLoginPayload struct {
 	GoogleAuthId string `json:"googleAuthId"`
 }
 
-func (r *Repository) UserSignup(ctx context.Context, payload UserSignupPayload) (*User, error) {
+func (r *Repository) UserSignup(ctx context.Context, payload UserSignupPayload) (user *User, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
 	cols := []string{
-		"id",
 		"email",
 		"first_name",
 		"last_name",
@@ -46,27 +57,22 @@ func (r *Repository) UserSignup(ctx context.Context, payload UserSignupPayload) 
 		payload.GoogleAuthId,
 	}
 
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	sqlStmt, sqlArgs, err := psql.Insert(`"user"`).
+	sqlStmt, sqlArgs, err := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Insert(`"user"`).
 		Columns(cols...).
 		Values(vals...).
-		Suffix("RETURNING id, email, first_name, last_name, phone, avatar_url, google_auth_id").
+		Suffix("RETURNING id").
 		ToSql()
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to build query: %s %w", sqlStmt, err)
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	var user User
-	{
-		err := pgxscan.Get(ctx, r.db, &user, sqlStmt, sqlArgs...)
-		if err != nil {
-			return nil, fmt.Errorf("failed to execute: %s %w", sqlStmt, err)
-		}
+	var newUser User
+	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(&newUser.Id); err != nil {
+		return nil, fmt.Errorf("failed to execute: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	return &user, nil
+	return &newUser, nil
 }
 
 func (r *Repository) GetUserByGoogleAuthId(ctx context.Context, googleAuthId interface{}) (*User, error) {

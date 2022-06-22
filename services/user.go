@@ -10,21 +10,7 @@ import (
 )
 
 func (s *Service) UserSignup(c *gin.Context) {
-	payload := repositories.UserSignupPayload{}
-	if err := c.BindJSON(&payload); err != nil {
-		log.Println("Failed to parse payload", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong during signup")
-		return
-	}
-
-	user, err := s.repo.UserSignup(c, payload)
-	if err != nil {
-		log.Println("Failed to signup user", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong during signup")
-		return
-	}
-
-	c.JSON(http.StatusOK, user)
+	s.userSignup(c)
 }
 
 func (s *Service) UserLogin(c *gin.Context) {
@@ -74,4 +60,27 @@ func (s *Service) getUser(c *gin.Context) (user *repositories.User, err error) {
 	}
 
 	return user, nil
+}
+
+func (s *Service) userSignup(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to signup user |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong during signup")
+		}
+	}()
+
+	payload := repositories.UserSignupPayload{}
+	if err := c.BindJSON(&payload); err != nil {
+		return fmt.Errorf("failed to parse payload | %w", err)
+	}
+
+	user, err := s.repo.UserSignup(c, payload)
+	if err != nil {
+		return fmt.Errorf("failed to insert user | %w", err)
+	}
+
+	c.JSON(http.StatusOK, user)
+
+	return nil
 }
