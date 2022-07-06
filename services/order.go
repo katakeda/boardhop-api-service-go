@@ -39,6 +39,12 @@ func (s *Service) getOrders(c *gin.Context) (err error) {
 		return fmt.Errorf("failed to fetch orders | %w", err)
 	}
 
+	if len(orders) <= 0 {
+		log.Println("No orders found")
+		c.JSON(http.StatusNotFound, "No orders found")
+		return
+	}
+
 	c.JSON(http.StatusOK, orders)
 
 	return nil
