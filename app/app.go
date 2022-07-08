@@ -56,7 +56,7 @@ func (app *App) Initialize() {
 }
 
 func (app *App) Run() {
-	err := app.router.Run(os.Getenv("APP_HOST"))
+	err := app.router.Run(os.Getenv("APP_HOST") + ":" + os.Getenv("APP_PORT"))
 	if err != nil {
 		log.Fatalln("Failed to run app", err)
 	}
