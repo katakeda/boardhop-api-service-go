@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 
@@ -17,14 +16,7 @@ type App struct {
 }
 
 func (app *App) Initialize() {
-	db, err := pgxpool.Connect(context.Background(), fmt.Sprintf("%s://%s:%s@%s:%s/%s",
-		os.Getenv("DB_DRIVER"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASS"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-	))
+	db, err := pgxpool.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalln("Failed to connect with DB", err)
 	}
@@ -56,7 +48,7 @@ func (app *App) Initialize() {
 }
 
 func (app *App) Run() {
-	err := app.router.Run(os.Getenv("APP_HOST") + ":" + os.Getenv("APP_PORT"))
+	err := app.router.Run(":" + os.Getenv("PORT"))
 	if err != nil {
 		log.Fatalln("Failed to run app", err)
 	}
