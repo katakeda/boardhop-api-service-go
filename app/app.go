@@ -17,7 +17,7 @@ type App struct {
 }
 
 func (app *App) Initialize() {
-	db, err := pgxpool.Connect(context.Background(), fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable",
+	db, err := pgxpool.Connect(context.Background(), fmt.Sprintf("%s://%s:%s@%s:%s/%s",
 		os.Getenv("DB_DRIVER"),
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASS"),
