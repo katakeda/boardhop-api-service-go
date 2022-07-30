@@ -45,6 +45,8 @@ func (app *App) Initialize() {
 	app.router.POST("/posts", AuthRequired(), svc.CreatePost)
 	app.router.POST("/orders", AuthRequired(), svc.CreateOrder)
 	app.router.POST("/messages", AuthRequired(), svc.CreateMessage)
+
+	app.router.PATCH("/posts/:id", AuthRequired(), svc.UpdatePost)
 }
 
 func (app *App) Run() {

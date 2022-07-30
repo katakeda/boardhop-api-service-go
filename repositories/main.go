@@ -23,6 +23,7 @@ type IRepository interface {
 	GetPosts(ctx context.Context, params url.Values) ([]Post, error)
 	GetPost(ctx context.Context, id string) (*Post, error)
 	CreatePost(ctx context.Context, payload CreatePost) (*Post, error)
+	UpdatePost(ctx context.Context, id string, payload UpdatePost) (*Post, error)
 	CreatePostTags(ctx context.Context, tags []CreatePostTag) error
 	CreatePostMedias(ctx context.Context, medias []CreatePostMedia) error
 	CreatePostCategories(ctx context.Context, categories []CreatePostCategory) error

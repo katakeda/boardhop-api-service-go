@@ -43,6 +43,8 @@ type Post struct {
 
 	Email      *string     `json:"email" db:"email"`
 	AvatarUrl  *string     `json:"avatarUrl" db:"avatar_url"`
+	FirstName  *string     `json:"firstName" db:"first_name"`
+	LastName   *string     `json:"lastName" db:"last_name"`
 	Categories *string     `json:"categories" db:"categories"`
 	Tags       []Tag       `json:"tags" db:"tags"`
 	Medias     []PostMedia `json:"medias" db:"medias"`
@@ -74,6 +76,21 @@ type CreatePost struct {
 	PickupLongitude *float64 `json:"pickupLongitude"`
 }
 
+type UpdatePostPayload struct {
+	Data   UpdatePost              `json:"data" form:"data" binding:"required"`
+	Images []*multipart.FileHeader `json:"images" form:"images"`
+	TagIds []string                `json:"tag_ids" form:"tag_ids"`
+}
+
+type UpdatePost struct {
+	Title           *string  `json:"title"`
+	Price           *float32 `json:"price"`
+	Rate            *string  `json:"rate"`
+	Description     *string  `json:"description"`
+	PickupLatitude  *float64 `json:"pickupLatitude"`
+	PickupLongitude *float64 `json:"pickupLongitude"`
+}
+
 type CreatePostTag struct {
 	PostId string
 	TagId  string
@@ -90,7 +107,6 @@ type CreatePostCategory struct {
 	CategoryId string
 }
 
-// TODO: Replace params with filters
 func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []Post, err error) {
 	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
 	if !ok || tx == nil {
@@ -187,6 +203,8 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		"a.created_at",
 		"b.email",
 		"b.avatar_url",
+		"b.first_name",
+		"b.last_name",
 		`string_agg(DISTINCT d. "value", ',') AS categories`,
 	}
 
@@ -272,6 +290,54 @@ func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *
 	}
 
 	return &newPost, nil
+}
+
+func (r *Repository) UpdatePost(ctx context.Context, id string, payload UpdatePost) (post *Post, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Update("post").
+		Where(sq.Eq{"id": id})
+
+	if payload.Title != nil {
+		psql = psql.Set("title", payload.Title)
+	}
+	if payload.Price != nil {
+		psql = psql.Set("price", payload.Price)
+	}
+	if payload.Rate != nil {
+		psql = psql.Set("rate", payload.Rate)
+	}
+	if payload.Description != nil {
+		psql = psql.Set("description", payload.Description)
+	}
+	if payload.PickupLatitude != nil {
+		psql = psql.Set("pickup_latitude", payload.PickupLatitude)
+	}
+	if payload.PickupLongitude != nil {
+		psql = psql.Set("pickup_longitude", payload.PickupLongitude)
+	}
+
+	sqlStmt, sqlArgs, err := psql.Suffix("RETURNING id").ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	var updatedPost Post
+	if err := tx.QueryRow(ctx, sqlStmt, sqlArgs...).Scan(&updatedPost.Id); err != nil {
+		return nil, fmt.Errorf("failed to execute: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return &updatedPost, nil
 }
 
 func (r *Repository) CreatePostTags(ctx context.Context, tags []CreatePostTag) (err error) {

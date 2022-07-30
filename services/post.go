@@ -46,6 +46,10 @@ func (s *Service) CreatePost(c *gin.Context) {
 	s.createPost(c)
 }
 
+func (s *Service) UpdatePost(c *gin.Context) {
+	s.updatePost(c)
+}
+
 func (s *Service) GetTags(c *gin.Context) {
 	s.getTags(c)
 }
@@ -154,6 +158,50 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 	}
 
 	c.JSON(http.StatusOK, post)
+
+	return s.repo.CommitTxn(ctx)
+}
+
+func (s *Service) updatePost(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to update post |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while updating post")
+		}
+	}()
+
+	payload := repositories.UpdatePostPayload{}
+	if err = c.ShouldBind(&payload); err != nil {
+		return fmt.Errorf("failed to parse payload | %w", err)
+	}
+
+	user, err := s.getUser(c)
+	if err != nil || user == nil {
+		return fmt.Errorf("failed to authorize user | %w", err)
+	}
+
+	id := c.Param("id")
+	post, err := s.repo.GetPost(c, id)
+	if err != nil {
+		return fmt.Errorf("failed to get post | %w", err)
+	}
+
+	if post.UserId != user.Id {
+		return fmt.Errorf("unauthorized request")
+	}
+
+	ctx, err := s.repo.BeginTxn(c)
+	if err != nil {
+		return fmt.Errorf("failed to begin db txn | %w", err)
+	}
+
+	updatedPost, err := s.repo.UpdatePost(ctx, id, payload.Data)
+	if err != nil {
+		s.repo.RollbackTxn(ctx)
+		return fmt.Errorf("failed to update post | %w", err)
+	}
+
+	c.JSON(http.StatusOK, updatedPost)
 
 	return s.repo.CommitTxn(ctx)
 }
