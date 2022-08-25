@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	PER_PAGE_MAX = 3
+	DEFAULT_LIMIT = 50
 )
 
 var (
@@ -157,15 +157,23 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []P
 	}
 
 	offset := 0
-	if page := params.Get("p"); page != "" {
-		offset, err = strconv.Atoi(page)
+	if p := params.Get("p"); p != "" {
+		offset, err = strconv.Atoi(p)
 		if err != nil {
 			offset = 0
 		}
 	}
 
-	sqlStmt, sqlArgs, err := psql.Offset(uint64(offset)*PER_PAGE_MAX).
-		Limit(PER_PAGE_MAX).
+	limit := DEFAULT_LIMIT
+	if l := params.Get("l"); l != "" {
+		limit, err = strconv.Atoi(l)
+		if err != nil {
+			limit = DEFAULT_LIMIT
+		}
+	}
+
+	sqlStmt, sqlArgs, err := psql.Offset(uint64(offset)*uint64(limit)).
+		Limit(uint64(limit)).
 		GroupBy("a.id", "b.id").
 		ToSql()
 	if err != nil {
