@@ -198,7 +198,18 @@ func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []P
 	return posts, nil
 }
 
-func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
+func (r *Repository) GetPost(ctx context.Context, id string) (post *Post, err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
 	cols := []string{
 		"a.id",
 		"a.user_id",
@@ -230,23 +241,28 @@ func (r *Repository) GetPost(ctx context.Context, id string) (*Post, error) {
 		return nil, fmt.Errorf("failed to build query: %s | %w", sqlStmt, err)
 	}
 
-	var post Post
-	{
-		err := pgxscan.Get(ctx, r.db, &post, sqlStmt, sqlArgs...)
-		if err != nil {
-			return nil, fmt.Errorf("failed to execute: %s | %w", sqlStmt, err)
-		}
+	rows, err := tx.Query(ctx, sqlStmt, sqlArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
 	}
 
-	if err := r.setPostMedias(ctx, &post); err != nil {
+	var p Post
+	if err := pgxscan.ScanOne(&p, rows); err != nil {
+		if err.Error() == pgx.ErrNoRows.Error() {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan rows | %w", err)
+	}
+
+	if err := r.setPostMedias(ctx, &p); err != nil {
 		return nil, fmt.Errorf("failed to set post medias | %w", err)
 	}
 
-	if err := r.setPostTags(ctx, &post); err != nil {
+	if err := r.setPostTags(ctx, &p); err != nil {
 		return nil, fmt.Errorf("failed to set post tags | %w", err)
 	}
 
-	return &post, nil
+	return &p, nil
 }
 
 func (r *Repository) CreatePost(ctx context.Context, payload CreatePost) (post *Post, err error) {

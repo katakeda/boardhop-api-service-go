@@ -30,16 +30,7 @@ func (s *Service) GetPosts(c *gin.Context) {
 }
 
 func (s *Service) GetPost(c *gin.Context) {
-	id := c.Param("id")
-
-	post, err := s.repo.GetPost(c, id)
-	if err != nil {
-		log.Printf("Failed to get post | %v", err)
-		c.JSON(http.StatusInternalServerError, "Something went wrong while getting post")
-		return
-	}
-
-	c.JSON(http.StatusOK, post)
+	s.getPost(c)
 }
 
 func (s *Service) CreatePost(c *gin.Context) {
@@ -56,6 +47,31 @@ func (s *Service) GetTags(c *gin.Context) {
 
 func (s *Service) GetCategories(c *gin.Context) {
 	s.getCategories(c)
+}
+
+func (s *Service) getPost(c *gin.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("Failed to get post |", err)
+			c.JSON(http.StatusInternalServerError, "Something went wrong while getting post")
+		}
+	}()
+
+	id := c.Param("id")
+
+	post, err := s.repo.GetPost(c, id)
+	if err != nil {
+		return fmt.Errorf("failed to get post | %w", err)
+	}
+
+	if post == nil {
+		c.JSON(http.StatusNotFound, "Post not found")
+		return nil
+	}
+
+	c.JSON(http.StatusOK, post)
+
+	return nil
 }
 
 func (s *Service) createPost(c *gin.Context) (err error) {
