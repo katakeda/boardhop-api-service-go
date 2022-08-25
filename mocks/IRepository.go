@@ -339,6 +339,29 @@ func (_m *IRepository) RollbackTxn(ctx context.Context) error {
 	return r0
 }
 
+// UpdatePost provides a mock function with given fields: ctx, id, payload
+func (_m *IRepository) UpdatePost(ctx context.Context, id string, payload repositories.UpdatePost) (*repositories.Post, error) {
+	ret := _m.Called(ctx, id, payload)
+
+	var r0 *repositories.Post
+	if rf, ok := ret.Get(0).(func(context.Context, string, repositories.UpdatePost) *repositories.Post); ok {
+		r0 = rf(ctx, id, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repositories.Post)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, repositories.UpdatePost) error); ok {
+		r1 = rf(ctx, id, payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // UserSignup provides a mock function with given fields: ctx, payload
 func (_m *IRepository) UserSignup(ctx context.Context, payload repositories.UserSignupPayload) (*repositories.User, error) {
 	ret := _m.Called(ctx, payload)
