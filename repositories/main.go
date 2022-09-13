@@ -27,6 +27,8 @@ type IRepository interface {
 	CreatePostTags(ctx context.Context, tags []CreatePostTag) error
 	CreatePostMedias(ctx context.Context, medias []CreatePostMedia) error
 	CreatePostCategories(ctx context.Context, categories []CreatePostCategory) error
+	DeletePostTags(ctx context.Context, id string) error
+	DeletePostCategories(ctx context.Context, id string) error
 
 	GetTags(ctx context.Context, params url.Values) ([]Tag, error)
 

@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"mime/multipart"
 	"net/url"
 	"strconv"
 	"strings"
@@ -60,10 +59,8 @@ type PostMedia struct {
 }
 
 type CreatePostPayload struct {
-	Data        CreatePost              `json:"data" form:"data" binding:"required"`
-	Images      []*multipart.FileHeader `json:"images" form:"images"`
-	TagIds      []string                `json:"tag_ids" form:"tag_ids"`
-	CategoryIds []string                `json:"category_ids" form:"category_ids"`
+	Data          CreatePost        `json:"data" binding:"required"`
+	Relationships PostRelationships `json:"relationships"`
 }
 
 type CreatePost struct {
@@ -77,9 +74,8 @@ type CreatePost struct {
 }
 
 type UpdatePostPayload struct {
-	Data   UpdatePost              `json:"data" form:"data" binding:"required"`
-	Images []*multipart.FileHeader `json:"images" form:"images"`
-	TagIds []string                `json:"tag_ids" form:"tag_ids"`
+	Data          UpdatePost        `json:"data" binding:"required"`
+	Relationships PostRelationships `json:"relationships"`
 }
 
 type UpdatePost struct {
@@ -89,6 +85,11 @@ type UpdatePost struct {
 	Description     *string  `json:"description"`
 	PickupLatitude  *float64 `json:"pickupLatitude"`
 	PickupLongitude *float64 `json:"pickupLongitude"`
+}
+
+type PostRelationships struct {
+	TagIds      []string `json:"tagIds"`
+	CategoryIds []string `json:"categoryIds"`
 }
 
 type CreatePostTag struct {
@@ -470,6 +471,62 @@ func (r *Repository) CreatePostCategories(ctx context.Context, categories []Crea
 			categories[idx].CategoryId,
 		)
 	}
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
+}
+
+func (r *Repository) DeletePostTags(ctx context.Context, id string) (err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Delete("post_tag").
+		Where(sq.Eq{"post_id": id})
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
+}
+
+func (r *Repository) DeletePostCategories(ctx context.Context, id string) (err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Delete("post_category").
+		Where(sq.Eq{"post_id": id})
 
 	sqlStmt, sqlArgs, err := psql.ToSql()
 	if err != nil {

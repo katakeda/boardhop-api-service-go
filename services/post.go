@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/katakeda/boardhop-api-service-go/repositories"
-	"github.com/katakeda/boardhop-api-service-go/utils"
 )
 
 func (s *Service) GetPosts(c *gin.Context) {
@@ -106,10 +105,10 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 	}
 
 	tags := []repositories.CreatePostTag{}
-	for idx := range payload.TagIds {
+	for idx := range payload.Relationships.TagIds {
 		tags = append(tags, repositories.CreatePostTag{
 			PostId: post.Id,
-			TagId:  payload.TagIds[idx],
+			TagId:  payload.Relationships.TagIds[idx],
 		})
 	}
 
@@ -121,10 +120,10 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 	}
 
 	categories := []repositories.CreatePostCategory{}
-	for idx := range payload.CategoryIds {
+	for idx := range payload.Relationships.CategoryIds {
 		categories = append(categories, repositories.CreatePostCategory{
 			PostId:     post.Id,
-			CategoryId: payload.CategoryIds[idx],
+			CategoryId: payload.Relationships.CategoryIds[idx],
 		})
 	}
 
@@ -132,44 +131,6 @@ func (s *Service) createPost(c *gin.Context) (err error) {
 		if err = s.repo.CreatePostCategories(ctx, categories); err != nil {
 			s.repo.RollbackTxn(ctx)
 			return fmt.Errorf("failed to create post categories | %w", err)
-		}
-	}
-
-	images := []repositories.CreatePostMedia{}
-	for idx := range payload.Images {
-		images = append(images, repositories.CreatePostMedia{
-			PostId:   post.Id,
-			MediaUrl: fmt.Sprintf("%s_%d.jpg", post.Id, idx),
-			Type:     "image",
-		})
-	}
-
-	if len(images) > 0 {
-		if err = s.repo.CreatePostMedias(ctx, images); err != nil {
-			s.repo.RollbackTxn(ctx)
-			return fmt.Errorf("failed to create post medias | %w", err)
-		}
-
-		bucket, err := utils.GetDefaultBucket(c)
-		if err != nil {
-			return fmt.Errorf("failed to get default bucket | %w", err)
-		}
-
-		var uploadErr error
-		defer func() {
-			if uploadErr != nil {
-				for idx := range images {
-					utils.DeleteFile(c, bucket, images[idx].MediaUrl)
-				}
-			}
-		}()
-
-		for idx := range payload.Images {
-			if err := utils.UploadFile(c, bucket, images[idx].MediaUrl, payload.Images[idx]); err != nil {
-				uploadErr = err
-				s.repo.RollbackTxn(ctx)
-				return fmt.Errorf("failed to upload files | %w", err)
-			}
 		}
 	}
 
@@ -202,6 +163,11 @@ func (s *Service) updatePost(c *gin.Context) (err error) {
 		return fmt.Errorf("failed to get post | %w", err)
 	}
 
+	if post == nil {
+		c.JSON(http.StatusNotFound, "Post not found")
+		return nil
+	}
+
 	if post.UserId != user.Id {
 		return fmt.Errorf("unauthorized request")
 	}
@@ -215,6 +181,44 @@ func (s *Service) updatePost(c *gin.Context) (err error) {
 	if err != nil {
 		s.repo.RollbackTxn(ctx)
 		return fmt.Errorf("failed to update post | %w", err)
+	}
+
+	tags := []repositories.CreatePostTag{}
+	for idx := range payload.Relationships.TagIds {
+		tags = append(tags, repositories.CreatePostTag{
+			PostId: post.Id,
+			TagId:  payload.Relationships.TagIds[idx],
+		})
+	}
+
+	if len(tags) > 0 {
+		if err := s.repo.DeletePostTags(ctx, post.Id); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to delete post tags | %w", err)
+		}
+		if err = s.repo.CreatePostTags(ctx, tags); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to create post tags | %w", err)
+		}
+	}
+
+	categories := []repositories.CreatePostCategory{}
+	for idx := range payload.Relationships.CategoryIds {
+		categories = append(categories, repositories.CreatePostCategory{
+			PostId:     post.Id,
+			CategoryId: payload.Relationships.CategoryIds[idx],
+		})
+	}
+
+	if len(categories) > 0 {
+		if err := s.repo.DeletePostCategories(ctx, post.Id); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to delete post categories | %w", err)
+		}
+		if err = s.repo.CreatePostCategories(ctx, categories); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to create post categories | %w", err)
+		}
 	}
 
 	c.JSON(http.StatusOK, updatedPost)
