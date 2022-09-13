@@ -55,7 +55,6 @@ type PostMedia struct {
 	MediaUrl  string     `json:"mediaUrl" db:"media_url"`
 	Type      string     `json:"type" db:"type"`
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
-	DeletedAt *time.Time `db:"deleted_at"`
 }
 
 type CreatePostPayload struct {
@@ -88,8 +87,9 @@ type UpdatePost struct {
 }
 
 type PostRelationships struct {
-	TagIds      []string `json:"tagIds"`
-	CategoryIds []string `json:"categoryIds"`
+	TagIds      []string          `json:"tagIds"`
+	CategoryIds []string          `json:"categoryIds"`
+	Medias      []UpdatePostMedia `json:"medias"`
 }
 
 type CreatePostTag struct {
@@ -106,6 +106,11 @@ type CreatePostMedia struct {
 type CreatePostCategory struct {
 	PostId     string
 	CategoryId string
+}
+
+type UpdatePostMedia struct {
+	MediaUrl string `json:"mediaUrl"`
+	Type     string `json:"type"`
 }
 
 func (r *Repository) GetPosts(ctx context.Context, params url.Values) (posts []Post, err error) {
@@ -498,6 +503,34 @@ func (r *Repository) DeletePostTags(ctx context.Context, id string) (err error) 
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
 		Delete("post_tag").
+		Where(sq.Eq{"post_id": id})
+
+	sqlStmt, sqlArgs, err := psql.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	if _, err = tx.Exec(ctx, sqlStmt, sqlArgs...); err != nil {
+		return fmt.Errorf("failed to execute query: %s args: %v | %w", sqlStmt, sqlArgs, err)
+	}
+
+	return nil
+}
+
+func (r *Repository) DeletePostMedias(ctx context.Context, id string) (err error) {
+	tx, ok := ctx.Value(TxnKey).(pgx.Tx)
+	if !ok || tx == nil {
+		tx, _ = r.db.Begin(ctx)
+		defer func() error {
+			if err != nil {
+				return tx.Rollback(ctx)
+			}
+			return tx.Commit(ctx)
+		}()
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
+		Delete("post_media").
 		Where(sq.Eq{"post_id": id})
 
 	sqlStmt, sqlArgs, err := psql.ToSql()

@@ -221,6 +221,26 @@ func (s *Service) updatePost(c *gin.Context) (err error) {
 		}
 	}
 
+	images := []repositories.CreatePostMedia{}
+	for idx := range payload.Relationships.Medias {
+		images = append(images, repositories.CreatePostMedia{
+			PostId:   post.Id,
+			MediaUrl: payload.Relationships.Medias[idx].MediaUrl,
+			Type:     payload.Relationships.Medias[idx].Type,
+		})
+	}
+
+	if len(images) > 0 {
+		if err := s.repo.DeletePostMedias(ctx, post.Id); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to delete post medias | %w", err)
+		}
+		if err = s.repo.CreatePostMedias(ctx, images); err != nil {
+			s.repo.RollbackTxn(ctx)
+			return fmt.Errorf("failed to create post medias | %w", err)
+		}
+	}
+
 	c.JSON(http.StatusOK, updatedPost)
 
 	return s.repo.CommitTxn(ctx)
