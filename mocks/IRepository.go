@@ -164,6 +164,48 @@ func (_m *IRepository) CreatePostTags(ctx context.Context, tags []repositories.C
 	return r0
 }
 
+// DeletePostCategories provides a mock function with given fields: ctx, id
+func (_m *IRepository) DeletePostCategories(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeletePostMedias provides a mock function with given fields: ctx, id
+func (_m *IRepository) DeletePostMedias(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeletePostTags provides a mock function with given fields: ctx, id
+func (_m *IRepository) DeletePostTags(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetCategories provides a mock function with given fields: ctx
 func (_m *IRepository) GetCategories(ctx context.Context) ([]repositories.Category, error) {
 	ret := _m.Called(ctx)
